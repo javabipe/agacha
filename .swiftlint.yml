@@ -1,0 +1,41 @@
+included:
+  - App
+  - Packages
+excluded:
+  - Packages/*/.build
+  - .build
+  - .tools
+
+disabled_rules:
+  - trailing_comma
+  - todo
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - sorted_imports
+
+line_length:
+  warning: 140
+  error: 200
+
+identifier_name:
+  min_length: 1
+  max_length: 50
+
+type_body_length:
+  warning: 300
+  error: 500
+
+function_body_length:
+  warning: 60
+  error: 120
+
+large_tuple:
+  warning: 3
+  error: 4
+
+# SwiftUI: views com body grande e closures longas são normais
+cyclomatic_complexity:
+  warning: 15
+  error: 25

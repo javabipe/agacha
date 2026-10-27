@@ -1,0 +1,77 @@
+name: Agacha
+options:
+  bundleIdPrefix: br.com.agacha
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: pt-BR
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_STYLE: Automatic
+packages:
+  AganhaCore:
+    path: Packages/AganhaCore
+  AganhaVision:
+    path: Packages/AganhaVision
+  AganhaAudio:
+    path: Packages/AganhaAudio
+  AganhaUI:
+    path: Packages/AganhaUI
+  AganhaStore:
+    path: Packages/AganhaStore
+targets:
+  Agacha:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    dependencies:
+      - package: AganhaCore
+      - package: AganhaVision
+      - package: AganhaAudio
+      - package: AganhaUI
+      - package: AganhaStore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.com.agacha.agacha
+        TARGETED_DEVICE_FAMILY: "1,2"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_EMIT_LOC_STRINGS: YES
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Agacha
+        CFBundleLocalizations: [pt-BR, en]
+        NSCameraUsageDescription: A câmera identifica quem está de pé ou agachado. As imagens são processadas no aparelho e nunca salvas ou enviadas.
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Só para o spike/dev: expõe a pasta Documents no app Arquivos (fixtures de esqueletos).
+        # Remover antes da Fase 3 (App Store).
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        ITSAppUsesNonExemptEncryption: false
+schemes:
+  Agacha:
+    build:
+      targets:
+        Agacha: all
+    run:
+      config: Debug
+    archive:
+      config: Release

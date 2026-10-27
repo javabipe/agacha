@@ -1,0 +1,18 @@
+# Xcode / SwiftPM
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.build/
+.swiftpm/
+*.xcworkspace/xcuserdata
+
+# Gerados pelo XcodeGen
+App/Info.plist
+
+# Ferramentas de dev baixadas localmente (sem Homebrew)
+.tools/
+
+# Configuração local (Team ID etc.)
+Config/Local.xcconfig
+
+.DS_Store
