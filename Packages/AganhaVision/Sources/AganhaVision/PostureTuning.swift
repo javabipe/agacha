@@ -19,6 +19,9 @@ public struct PostureTuning: Codable, Sendable, Equatable {
     /// Quadros usados na calibração inicial.
     public var calibrationFrames: Int = 10
 
+    /// Escala (fração do quadro) usada no lugar do tronco quando ombros/quadris não aparecem (pessoa perto).
+    public var noseFallbackScale: Double = 0.25
+
     public init() {}
 
     public static let normal = PostureTuning()

@@ -31,6 +31,7 @@ public final class CameraSession: NSObject, @unchecked Sendable {
     private var _onFrame: (@Sendable (CVPixelBuffer, TimeInterval) -> Void)?
     private var _device: AVCaptureDevice?
     private var configured = false
+    private var centerStagePreferred = true
 
     @MainActor private var previewLayer: AVCaptureVideoPreviewLayer?
     @MainActor private var coordinator: AVCaptureDevice.RotationCoordinator?
@@ -64,6 +65,15 @@ public final class CameraSession: NSObject, @unchecked Sendable {
                 }
             }
         }
+    }
+
+    /// Liga/desliga o Center Stage (o enquadramento que segue a pessoa desloca as referências de postura).
+    public func setCenterStage(enabled: Bool) -> CameraInfo? {
+        lock.withLock { centerStagePreferred = enabled }
+        guard let device, device.activeFormat.isCenterStageSupported else { return nil }
+        AVCaptureDevice.centerStageControlMode = .app
+        AVCaptureDevice.isCenterStageEnabled = enabled
+        return info(for: device)
     }
 
     public func stop() {
@@ -162,8 +172,8 @@ public final class CameraSession: NSObject, @unchecked Sendable {
         device.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 30)
 
         if device.activeFormat.isCenterStageSupported {
-            AVCaptureDevice.centerStageControlMode = .cooperative
-            AVCaptureDevice.isCenterStageEnabled = true
+            AVCaptureDevice.centerStageControlMode = .app
+            AVCaptureDevice.isCenterStageEnabled = centerStagePreferred
         }
     }
 

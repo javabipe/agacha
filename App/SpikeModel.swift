@@ -19,6 +19,10 @@ final class SpikeModel {
         didSet { pipeline.tuning = tuning }
     }
     var notes = ""
+    /// Padrão desligado no spike: o enquadramento que segue a pessoa atrapalha a calibração.
+    var centerStageOn = false {
+        didSet { cameraInfo = camera.setCenterStage(enabled: centerStageOn) ?? cameraInfo }
+    }
 
     let camera = CameraSession()
     private let pipeline = PosePipeline()
@@ -36,6 +40,7 @@ final class SpikeModel {
             let analysis = pipeline.process(pixelBuffer: buffer, timestamp: timestamp)
             Task { @MainActor in model.apply(analysis) }
         }
+        _ = camera.setCenterStage(enabled: centerStageOn)
         do {
             cameraInfo = try await camera.start()
             camera.updateRotationCoordinator()

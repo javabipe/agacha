@@ -93,6 +93,9 @@ private struct DebugPanel: View {
                     slider("Confiança mínima", value: $model.tuning.minConfidence, range: 0.05...0.8)
                     slider("Sumiu após (s)", value: $model.tuning.lostTimeout, range: 0.1...1.0)
                 }
+                Section("Câmera") {
+                    Toggle("Center Stage (enquadramento que segue)", isOn: $model.centerStageOn)
+                }
                 Section("Fixture") {
                     TextField("Notas (ex.: 3 pessoas, luz fraca, paisagem, 2,5 m)", text: $model.notes, axis: .vertical)
                 }

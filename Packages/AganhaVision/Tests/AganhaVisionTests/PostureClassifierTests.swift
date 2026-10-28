@@ -38,6 +38,20 @@ import Testing
         #expect(result.reading.crouchIndex != nil)
     }
 
+    @Test func worksWithNoseOnlyWhenPersonIsClose() {
+        var classifier = PostureClassifier()
+        func noseOnly(drop: Double) -> Skeleton {
+            Skeleton(joints: [.nose: Joint(x: 0.5, y: 0.3 + drop, confidence: 0.9)])
+        }
+        var t = feed(&classifier, skeleton: noseOnly(drop: 0), from: 0, seconds: 0.5).end
+        let standing = feed(&classifier, skeleton: noseOnly(drop: 0), from: t, seconds: 0.3)
+        #expect(standing.reading.posture == .standing)
+        t = standing.end
+        // Nariz desce 0.2 do quadro (escala padrão 0.25 -> índice 0.8).
+        let crouched = feed(&classifier, skeleton: noseOnly(drop: 0.2), from: t, seconds: 0.4)
+        #expect(crouched.reading.posture == .crouching)
+    }
+
     @Test func crouchNeedsDebounce() {
         var classifier = PostureClassifier()
         var t = feed(&classifier, skeleton: makeSkeleton(), from: 0, seconds: 0.5).end
