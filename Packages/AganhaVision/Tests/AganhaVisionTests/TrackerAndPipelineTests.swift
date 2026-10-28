@@ -19,6 +19,13 @@ import Testing
         #expect(slots == [1, 0])
     }
 
+    @Test func crouchingDoesNotCreateANewSlot() {
+        var tracker = Tracker()
+        _ = tracker.assign(to: [makeSkeleton(centerX: 0.5)])
+        // Quadril desce muito (centro se move 0,5 em y): continua sendo a mesma pessoa.
+        #expect(tracker.assign(to: [makeSkeleton(centerX: 0.5, hipDrop: 0.5)]) == [0])
+    }
+
     @Test func seventhPersonIsExtra() {
         var tracker = Tracker()
         let skeletons = (0..<7).map { makeSkeleton(centerX: 0.1 + Double($0) * 0.12) }

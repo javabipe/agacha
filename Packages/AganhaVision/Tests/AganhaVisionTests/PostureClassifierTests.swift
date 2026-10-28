@@ -26,6 +26,18 @@ import Testing
         #expect(abs(result.reading.crouchIndex ?? 1) < 0.01)
     }
 
+    @Test func fallsBackToShouldersWhenHipsAreLostWhileCrouching() {
+        var classifier = PostureClassifier()
+        var t = feed(&classifier, skeleton: makeSkeleton(), from: 0, seconds: 0.5).end
+        // Agachado: ombros descem 0.1 (índice 0.4 -> 0.8 com queda maior) e os quadris somem.
+        var crouched = makeSkeleton(hipDrop: 0.3)
+        for name in [JointName.leftHip, .rightHip] { crouched.joints[name]?.confidence = 0.05 }
+        let result = feed(&classifier, skeleton: crouched, from: t, seconds: 0.5)
+        t = result.end
+        #expect(result.reading.posture == .crouching)
+        #expect(result.reading.crouchIndex != nil)
+    }
+
     @Test func crouchNeedsDebounce() {
         var classifier = PostureClassifier()
         var t = feed(&classifier, skeleton: makeSkeleton(), from: 0, seconds: 0.5).end

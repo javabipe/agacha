@@ -6,11 +6,16 @@ public struct Tracker: Sendable {
     public let maxSlots: Int
     /// Distância máxima (em coordenadas normalizadas) para reaproveitar uma vaga.
     public let maxMatchDistance: Double
+    /// Peso do deslocamento vertical na distância: agachar move o centro quase só em y,
+    /// então y conta menos que x para não confundir "agachou" com "pessoa nova".
+    public let verticalWeight: Double
     private var lastCentroid: [ChildSlot: Point2D] = [:]
 
-    public init(maxSlots: Int = GameLimits.maxChildren, maxMatchDistance: Double = 0.3) {
+    public init(maxSlots: Int = GameLimits.maxChildren, maxMatchDistance: Double = 0.3,
+                verticalWeight: Double = 0.25) {
         self.maxSlots = maxSlots
         self.maxMatchDistance = maxMatchDistance
+        self.verticalWeight = verticalWeight
     }
 
     public mutating func reset() {
@@ -32,7 +37,7 @@ public struct Tracker: Sendable {
         for (index, centroid) in centroids.enumerated() {
             guard let centroid else { continue }
             for (slot, last) in lastCentroid {
-                candidates.append((hypot(centroid.x - last.x, centroid.y - last.y), index, slot))
+                candidates.append((hypot(centroid.x - last.x, (centroid.y - last.y) * verticalWeight), index, slot))
             }
         }
         candidates.sort { $0.distance < $1.distance }

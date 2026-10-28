@@ -17,11 +17,11 @@ public struct PostureReading: Sendable, Equatable {
 /// Classificador por criança. Uma instância por vaga; mantém calibração e histerese.
 public struct PostureClassifier: Sendable {
     private enum Phase: Sendable {
-        case calibrating(frames: Int, hipSum: Double, torsoSum: Double)
-        case ready(standingHipY: Double, torso: Double)
+        case calibrating(frames: Int, hipSum: Double, shoulderSum: Double, torsoSum: Double)
+        case ready(standingHipY: Double, standingShoulderY: Double, torso: Double)
     }
 
-    private var phase: Phase = .calibrating(frames: 0, hipSum: 0, torsoSum: 0)
+    private var phase: Phase = .calibrating(frames: 0, hipSum: 0, shoulderSum: 0, torsoSum: 0)
     private var posture: Posture = .unknown
     private var lastCrouch: Double?
     private var pendingTarget: Posture?
@@ -43,23 +43,38 @@ public struct PostureClassifier: Sendable {
         lastValid = time
 
         switch phase {
-        case let .calibrating(frames, hipSum, torsoSum):
+        case let .calibrating(frames, hipSum, shoulderSum, torsoSum):
+            // A calibração exige ombros e quadris visíveis (criança em pé).
+            guard let hipY = measure.hipY, let shoulderY = measure.shoulderY, let torso = measure.torso else {
+                return holdOrLose(at: time, tuning: tuning)
+            }
             let frames = frames + 1
-            let hipSum = hipSum + measure.hipY
-            let torsoSum = torsoSum + measure.torso
+            let hipSum = hipSum + hipY
+            let shoulderSum = shoulderSum + shoulderY
+            let torsoSum = torsoSum + torso
             if frames >= tuning.calibrationFrames {
                 let count = Double(frames)
-                phase = .ready(standingHipY: hipSum / count, torso: torsoSum / count)
+                phase = .ready(standingHipY: hipSum / count, standingShoulderY: shoulderSum / count,
+                               torso: torsoSum / count)
                 posture = .standing
                 standingSince = time
                 lastCrouch = 0
                 return reading(isCalibrated: true)
             }
-            phase = .calibrating(frames: frames, hipSum: hipSum, torsoSum: torsoSum)
+            phase = .calibrating(frames: frames, hipSum: hipSum, shoulderSum: shoulderSum, torsoSum: torsoSum)
             return PostureReading(posture: .unknown, crouchIndex: nil, isCalibrated: false)
 
-        case .ready(var standingHipY, var torso):
-            let crouch = (measure.hipY - standingHipY) / torso
+        case .ready(var standingHipY, var standingShoulderY, var torso):
+            // Quadril é a medida da especificação; se o Vision o perder (comum ao agachar de frente),
+            // os ombros, que também descem, servem de reserva.
+            let crouch: Double
+            if let hipY = measure.hipY {
+                crouch = (hipY - standingHipY) / torso
+            } else if let shoulderY = measure.shoulderY {
+                crouch = (shoulderY - standingShoulderY) / torso
+            } else {
+                return holdOrLose(at: time, tuning: tuning)
+            }
             lastCrouch = crouch
             applyHysteresis(crouch: crouch, time: time, tuning: tuning)
 
@@ -67,9 +82,10 @@ public struct PostureClassifier: Sendable {
             if posture == .standing, let since = standingSince,
                time - since > tuning.recalibrationHold, crouch < tuning.standEnter {
                 let rate = tuning.recalibrationRate
-                standingHipY += (measure.hipY - standingHipY) * rate
-                torso += (measure.torso - torso) * rate
-                phase = .ready(standingHipY: standingHipY, torso: torso)
+                if let hipY = measure.hipY { standingHipY += (hipY - standingHipY) * rate }
+                if let shoulderY = measure.shoulderY { standingShoulderY += (shoulderY - standingShoulderY) * rate }
+                if let current = measure.torso { torso += (current - torso) * rate }
+                phase = .ready(standingHipY: standingHipY, standingShoulderY: standingShoulderY, torso: torso)
             }
             return reading(isCalibrated: true)
         }
@@ -78,17 +94,22 @@ public struct PostureClassifier: Sendable {
     // MARK: - Privado
 
     private struct Measure {
-        var hipY: Double
-        var torso: Double
+        var hipY: Double?
+        var shoulderY: Double?
+        /// Só quando ombros e quadris foram vistos no mesmo quadro.
+        var torso: Double?
     }
 
     private static func measure(_ skeleton: Skeleton, tuning: PostureTuning) -> Measure? {
-        guard let shoulders = skeleton.midpoint(of: [.leftShoulder, .rightShoulder], minConfidence: tuning.minConfidence),
-              let hips = skeleton.midpoint(of: [.leftHip, .rightHip], minConfidence: tuning.minConfidence)
-        else { return nil }
-        let torso = hypot(hips.x - shoulders.x, hips.y - shoulders.y)
-        guard torso > 0.02 else { return nil }
-        return Measure(hipY: hips.y, torso: torso)
+        let shoulders = skeleton.midpoint(of: [.leftShoulder, .rightShoulder], minConfidence: tuning.minConfidence)
+        let hips = skeleton.midpoint(of: [.leftHip, .rightHip], minConfidence: tuning.minConfidence)
+        guard shoulders != nil || hips != nil else { return nil }
+        var torso: Double?
+        if let shoulders, let hips {
+            let length = hypot(hips.x - shoulders.x, hips.y - shoulders.y)
+            if length > 0.02 { torso = length }
+        }
+        return Measure(hipY: hips?.y, shoulderY: shoulders?.y, torso: torso)
     }
 
     private mutating func holdOrLose(at time: TimeInterval, tuning: PostureTuning) -> PostureReading {

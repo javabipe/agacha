@@ -83,11 +83,19 @@ private struct PersonLabel: View {
                 Text(crouch.formatted(.number.precision(.fractionLength(2))))
                     .font(.caption.monospacedDigit())
             }
+            Text("ombros \(confidence([.leftShoulder, .rightShoulder])) · quadril \(confidence([.leftHip, .rightHip]))")
+                .font(.caption2.monospacedDigit())
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(SlotPalette.color(for: person.slot).opacity(0.85), in: .rect(cornerRadius: 8))
         .foregroundStyle(.black)
+    }
+
+    /// Maior confiança do par de juntas (0,00 se não foi detectado).
+    private func confidence(_ names: [JointName]) -> String {
+        let best = names.compactMap { person.skeleton.joints[$0]?.confidence }.max() ?? 0
+        return best.formatted(.number.precision(.fractionLength(2)))
     }
 
     private var title: String {

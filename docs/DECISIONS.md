@@ -11,3 +11,5 @@ Registro de suposições pequenas feitas durante o desenvolvimento.
 | 2026-10-27 | Câmera entrega quadros espelhados e "em pé" (rotation coordinator), iguais à prévia aspect-fit. | Esqueletos batem com a imagem sem conversão extra. |
 | 2026-10-27 | `UIFileSharingEnabled` ligado só no spike. | Tirar as fixtures JSON pelo app Arquivos. **Remover antes da Fase 3.** |
 | 2026-10-27 | `AganhaUI` e `AganhaAudio` são placeholders na Fase 0. | Entram na Fase 1/2. |
+| 2026-10-27 | Tracker: deslocamento vertical pesa 0,25 na distância de associação. | No iPad, agachar criava uma vaga nova (centro pula em y) e reiniciava a calibração. |
+| 2026-10-27 | PostureClassifier: se o quadril não é visto, o agachamento é medido pela descida dos ombros (mesma normalização pelo tronco). | Ao agachar de frente o Vision perde os quadris; validado no iPad mini 6. Desvio da spec 6.1 só nesse caso. |
