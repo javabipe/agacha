@@ -1,0 +1,195 @@
+voice,category,id,variant,priority,text,filename
+lu,cmd,vivo,1,P0,VIVO!,lu_cmd_vivo_v1.wav
+lu,cmd,vivo,2,P0,VIVO!,lu_cmd_vivo_v2.wav
+lu,cmd,vivo,3,P0,VIVO!,lu_cmd_vivo_v3.wav
+lu,cmd,morto,1,P0,MORTO!,lu_cmd_morto_v1.wav
+lu,cmd,morto,2,P0,MORTO!,lu_cmd_morto_v2.wav
+lu,cmd,morto,3,P0,MORTO!,lu_cmd_morto_v3.wav
+lu,cmd,levanta,1,P0,LEVANTA!,lu_cmd_levanta_v1.wav
+lu,cmd,levanta,2,P0,LEVANTA!,lu_cmd_levanta_v2.wav
+lu,cmd,levanta,3,P0,LEVANTA!,lu_cmd_levanta_v3.wav
+lu,cmd,agacha,1,P0,AGACHA!,lu_cmd_agacha_v1.wav
+lu,cmd,agacha,2,P0,AGACHA!,lu_cmd_agacha_v2.wav
+lu,cmd,agacha,3,P0,AGACHA!,lu_cmd_agacha_v3.wav
+lu,cmd,em_pe,1,P2,EM PÉ!,lu_cmd_em_pe_v1.wav
+lu,cmd,em_pe,2,P2,EM PÉ!,lu_cmd_em_pe_v2.wav
+lu,flow,vamos_brincar,1,P0,Vamos brincar de Agacha!,lu_flow_vamos_brincar_v1.wav
+lu,flow,vamos_brincar,2,P0,Vamos brincar de Agacha!,lu_flow_vamos_brincar_v2.wav
+lu,flow,todos_em_pe,1,P0,"Todo mundo em pé, de frente para mim!",lu_flow_todos_em_pe_v1.wav
+lu,flow,preparados,1,P0,Preparados?,lu_flow_preparados_v1.wav
+lu,flow,preparados,2,P0,Preparados?,lu_flow_preparados_v2.wav
+lu,flow,count_3,1,P0,Três!,lu_flow_count_3_v1.wav
+lu,flow,count_2,1,P0,Dois!,lu_flow_count_2_v1.wav
+lu,flow,count_1,1,P0,Um!,lu_flow_count_1_v1.wav
+lu,flow,count_go,1,P0,Já!,lu_flow_count_go_v1.wav
+lu,flow,count_go,2,P0,Já!,lu_flow_count_go_v2.wav
+lu,flow,nivel_tranquilo,1,P1,Nível Tranquilo!,lu_flow_nivel_tranquilo_v1.wav
+lu,flow,nivel_sapeca,1,P1,Nível Sapeca!,lu_flow_nivel_sapeca_v1.wav
+lu,flow,nivel_furacao,1,P1,Nível Furacão!,lu_flow_nivel_furacao_v1.wav
+lu,flow,truque_aviso,1,P1,Atenção! Às vezes eu vou enganar vocês!,lu_flow_truque_aviso_v1.wav
+lu,flow,mais_rapido,1,P1,Mais rápido!,lu_flow_mais_rapido_v1.wav
+lu,flow,mais_rapido,2,P1,Mais rápido!,lu_flow_mais_rapido_v2.wav
+lu,flow,ficou_dificil,1,P1,Agora vai ficar difícil!,lu_flow_ficou_dificil_v1.wav
+lu,flow,proxima_rodada,1,P1,Próxima rodada!,lu_flow_proxima_rodada_v1.wav
+lu,flow,proxima_rodada,2,P1,Próxima rodada!,lu_flow_proxima_rodada_v2.wav
+lu,flow,repetir_rodada,1,P0,"Tudo bem, vamos repetir essa!",lu_flow_repetir_rodada_v1.wav
+lu,flow,pausa,1,P1,Pausa!,lu_flow_pausa_v1.wav
+lu,flow,continuar,1,P1,Vamos continuar!,lu_flow_continuar_v1.wav
+lu,flow,descansar,1,P1,Que tal descansar um pouquinho? Depois a gente brinca de novo!,lu_flow_descansar_v1.wav
+lu,fb,acertou_1,1,P0,Isso!,lu_fb_acertou_1_v1.wav
+lu,fb,acertou_2,1,P0,Muito bem!,lu_fb_acertou_2_v1.wav
+lu,fb,acertou_3,1,P1,Boa!,lu_fb_acertou_3_v1.wav
+lu,fb,errou_1,1,P0,"Ih, alguém errou!",lu_fb_errou_1_v1.wav
+lu,fb,errou_2,1,P1,Ops!,lu_fb_errou_2_v1.wav
+lu,fb,errou_3,1,P1,Quase!,lu_fb_errou_3_v1.wav
+lu,fb,ninguem_errou,1,P1,Ninguém errou! Continua!,lu_fb_ninguem_errou_v1.wav
+lu,fb,restam_dois,1,P0,Só restam dois! É a final!,lu_fb_restam_dois_v1.wav
+lu,fb,nao_vi,1,P1,Cadê você? Não consegui te ver!,lu_fb_nao_vi_v1.wav
+lu,fb,fim_de_jogo,1,P0,Fim de jogo!,lu_fb_fim_de_jogo_v1.wav
+lu,fb,campeao,1,P0,Temos um campeão! Parabéns!,lu_fb_campeao_v1.wav
+lu,fb,campeao,2,P0,Temos um campeão! Parabéns!,lu_fb_campeao_v2.wav
+lu,fb,empate,1,P1,Deu empate! Que brincadeira boa!,lu_fb_empate_v1.wav
+lu,fb,de_novo,1,P0,Vamos jogar de novo?,lu_fb_de_novo_v1.wav
+lu,cor,amarelo_errou,1,P0,Amarelo errou!,lu_cor_amarelo_errou_v1.wav
+lu,cor,amarelo_venceu,1,P0,Amarelo venceu! Parabéns!,lu_cor_amarelo_venceu_v1.wav
+lu,cor,amarelo_sumiu,1,P1,"Amarelo, saiu da câmera! Volte para o seu lugar.",lu_cor_amarelo_sumiu_v1.wav
+lu,cor,verde_errou,1,P0,Verde errou!,lu_cor_verde_errou_v1.wav
+lu,cor,verde_venceu,1,P0,Verde venceu! Parabéns!,lu_cor_verde_venceu_v1.wav
+lu,cor,verde_sumiu,1,P1,"Verde, saiu da câmera! Volte para o seu lugar.",lu_cor_verde_sumiu_v1.wav
+lu,cor,laranja_errou,1,P0,Laranja errou!,lu_cor_laranja_errou_v1.wav
+lu,cor,laranja_venceu,1,P0,Laranja venceu! Parabéns!,lu_cor_laranja_venceu_v1.wav
+lu,cor,laranja_sumiu,1,P1,"Laranja, saiu da câmera! Volte para o seu lugar.",lu_cor_laranja_sumiu_v1.wav
+lu,cor,roxo_errou,1,P0,Roxo errou!,lu_cor_roxo_errou_v1.wav
+lu,cor,roxo_venceu,1,P0,Roxo venceu! Parabéns!,lu_cor_roxo_venceu_v1.wav
+lu,cor,roxo_sumiu,1,P1,"Roxo, saiu da câmera! Volte para o seu lugar.",lu_cor_roxo_sumiu_v1.wav
+lu,cor,azul_errou,1,P0,Azul errou!,lu_cor_azul_errou_v1.wav
+lu,cor,azul_venceu,1,P0,Azul venceu! Parabéns!,lu_cor_azul_venceu_v1.wav
+lu,cor,azul_sumiu,1,P1,"Azul, saiu da câmera! Volte para o seu lugar.",lu_cor_azul_sumiu_v1.wav
+lu,cor,rosa_errou,1,P0,Rosa errou!,lu_cor_rosa_errou_v1.wav
+lu,cor,rosa_venceu,1,P0,Rosa venceu! Parabéns!,lu_cor_rosa_venceu_v1.wav
+lu,cor,rosa_sumiu,1,P1,"Rosa, saiu da câmera! Volte para o seu lugar.",lu_cor_rosa_sumiu_v1.wav
+lu,setup,intro,1,P0,"Encoste o aparelho na parede, de preferência no chão, um pouquinho inclinado para cima.",lu_setup_intro_v1.wav
+lu,setup,afastem,1,P0,"Afastem-se até eu ver todo mundo, da cabeça aos pés.",lu_setup_afastem_v1.wav
+lu,setup,passo_tras,1,P0,Deem um passinho para trás.,lu_setup_passo_tras_v1.wav
+lu,setup,passo_frente,1,P0,Deem um passinho para a frente.,lu_setup_passo_frente_v1.wav
+lu,setup,para_meio,1,P0,Cheguem mais para o meio.,lu_setup_para_meio_v1.wav
+lu,setup,sem_cabeca,1,P0,Não estou vendo a cabeça de alguém.,lu_setup_sem_cabeca_v1.wav
+lu,setup,sem_pes,1,P0,Não estou vendo os pés de alguém.,lu_setup_sem_pes_v1.wav
+lu,setup,cortado,1,P0,Tem alguém cortado na imagem.,lu_setup_cortado_v1.wav
+lu,setup,luz_fraca,1,P0,Está escuro aqui. Acendam uma luz!,lu_setup_luz_fraca_v1.wav
+lu,setup,contraluz,1,P1,A luz está atrás de vocês. Virem a luz para a frente.,lu_setup_contraluz_v1.wav
+lu,setup,parados,1,P0,"Fiquem em pé, paradinhos, de frente para mim. Vou conhecer vocês!",lu_setup_parados_v1.wav
+lu,setup,pronto,1,P0,Pronto! Já vi todo mundo!,lu_setup_pronto_v1.wav
+lu,setup,gente_demais,1,P1,Tem gente demais! Só podem brincar seis de cada vez.,lu_setup_gente_demais_v1.wav
+lu,setup,pouca_gente,1,P1,Preciso de pelo menos duas pessoas para brincar.,lu_setup_pouca_gente_v1.wav
+lu,setup,comecar_bracos,1,P0,"Para começar, levantem os dois braços!",lu_setup_comecar_bracos_v1.wav
+lu,setup,comecar_bracos,2,P0,"Para começar, levantem os dois braços!",lu_setup_comecar_bracos_v2.wav
+lu,setup,comecar_ok,1,P0,Isso! Vamos começar!,lu_setup_comecar_ok_v1.wav
+lu,setup,camera_negada,1,P2,O Agacha precisa da câmera para funcionar. Peça a um adulto para permitir nos Ajustes.,lu_setup_camera_negada_v1.wav
+lu,tut,intro,1,P1,Oi! Eu sou a Tia Lu! Vem brincar de Agacha comigo?,lu_tut_intro_v1.wav
+lu,tut,regra_classic,1,P1,"Quando eu disser VIVO, fiquem em pé. Quando eu disser MORTO, agachem!",lu_tut_regra_classic_v1.wav
+lu,tut,regra_school,1,P1,"Quando eu disser LEVANTA, fiquem em pé. Quando eu disser AGACHA, agachem!",lu_tut_regra_school_v1.wav
+lu,tut,regra_fica,1,P1,"Se já estiver na posição que eu mandar, é só ficar parado!",lu_tut_regra_fica_v1.wav
+lu,tut,regra_truque,1,P1,Mas cuidado! Às vezes eu mexo os braços ao contrário para enganar vocês. Escutem a minha voz!,lu_tut_regra_truque_v1.wav
+lu,tut,regra_fim,1,P1,Quem errar sai da brincadeira. Quem ficar por último vence! Vamos lá?,lu_tut_regra_fim_v1.wav
+lu,nav,menu_jogar,1,P2,Levantem o braço direito para jogar.,lu_nav_menu_jogar_v1.wav
+lu,nav,menu_proximo,1,P2,Levantem o braço direito para a próxima opção.,lu_nav_menu_proximo_v1.wav
+lu,nav,menu_voltar,1,P2,Levantem o braço esquerdo para voltar.,lu_nav_menu_voltar_v1.wav
+lu,nav,menu_escolha_nivel,1,P2,Escolham o nível!,lu_nav_menu_escolha_nivel_v1.wav
+chico,cmd,vivo,1,P0,VIVO!,chico_cmd_vivo_v1.wav
+chico,cmd,vivo,2,P0,VIVO!,chico_cmd_vivo_v2.wav
+chico,cmd,vivo,3,P0,VIVO!,chico_cmd_vivo_v3.wav
+chico,cmd,morto,1,P0,MORTO!,chico_cmd_morto_v1.wav
+chico,cmd,morto,2,P0,MORTO!,chico_cmd_morto_v2.wav
+chico,cmd,morto,3,P0,MORTO!,chico_cmd_morto_v3.wav
+chico,cmd,levanta,1,P0,LEVANTA!,chico_cmd_levanta_v1.wav
+chico,cmd,levanta,2,P0,LEVANTA!,chico_cmd_levanta_v2.wav
+chico,cmd,levanta,3,P0,LEVANTA!,chico_cmd_levanta_v3.wav
+chico,cmd,agacha,1,P0,AGACHA!,chico_cmd_agacha_v1.wav
+chico,cmd,agacha,2,P0,AGACHA!,chico_cmd_agacha_v2.wav
+chico,cmd,agacha,3,P0,AGACHA!,chico_cmd_agacha_v3.wav
+chico,cmd,em_pe,1,P2,EM PÉ!,chico_cmd_em_pe_v1.wav
+chico,cmd,em_pe,2,P2,EM PÉ!,chico_cmd_em_pe_v2.wav
+chico,flow,vamos_brincar,1,P0,Vamos brincar de Agacha!,chico_flow_vamos_brincar_v1.wav
+chico,flow,vamos_brincar,2,P0,Vamos brincar de Agacha!,chico_flow_vamos_brincar_v2.wav
+chico,flow,todos_em_pe,1,P0,"Todo mundo em pé, de frente para mim!",chico_flow_todos_em_pe_v1.wav
+chico,flow,preparados,1,P0,Preparados?,chico_flow_preparados_v1.wav
+chico,flow,preparados,2,P0,Preparados?,chico_flow_preparados_v2.wav
+chico,flow,count_3,1,P0,Três!,chico_flow_count_3_v1.wav
+chico,flow,count_2,1,P0,Dois!,chico_flow_count_2_v1.wav
+chico,flow,count_1,1,P0,Um!,chico_flow_count_1_v1.wav
+chico,flow,count_go,1,P0,Já!,chico_flow_count_go_v1.wav
+chico,flow,count_go,2,P0,Já!,chico_flow_count_go_v2.wav
+chico,flow,nivel_tranquilo,1,P1,Nível Tranquilo!,chico_flow_nivel_tranquilo_v1.wav
+chico,flow,nivel_sapeca,1,P1,Nível Sapeca!,chico_flow_nivel_sapeca_v1.wav
+chico,flow,nivel_furacao,1,P1,Nível Furacão!,chico_flow_nivel_furacao_v1.wav
+chico,flow,truque_aviso,1,P1,Atenção! Às vezes eu vou enganar vocês!,chico_flow_truque_aviso_v1.wav
+chico,flow,mais_rapido,1,P1,Mais rápido!,chico_flow_mais_rapido_v1.wav
+chico,flow,mais_rapido,2,P1,Mais rápido!,chico_flow_mais_rapido_v2.wav
+chico,flow,ficou_dificil,1,P1,Agora vai ficar difícil!,chico_flow_ficou_dificil_v1.wav
+chico,flow,proxima_rodada,1,P1,Próxima rodada!,chico_flow_proxima_rodada_v1.wav
+chico,flow,proxima_rodada,2,P1,Próxima rodada!,chico_flow_proxima_rodada_v2.wav
+chico,flow,repetir_rodada,1,P0,"Tudo bem, vamos repetir essa!",chico_flow_repetir_rodada_v1.wav
+chico,flow,pausa,1,P1,Pausa!,chico_flow_pausa_v1.wav
+chico,flow,continuar,1,P1,Vamos continuar!,chico_flow_continuar_v1.wav
+chico,flow,descansar,1,P1,Que tal descansar um pouquinho? Depois a gente brinca de novo!,chico_flow_descansar_v1.wav
+chico,fb,acertou_1,1,P0,Isso!,chico_fb_acertou_1_v1.wav
+chico,fb,acertou_2,1,P0,Muito bem!,chico_fb_acertou_2_v1.wav
+chico,fb,acertou_3,1,P1,Boa!,chico_fb_acertou_3_v1.wav
+chico,fb,errou_1,1,P0,"Ih, alguém errou!",chico_fb_errou_1_v1.wav
+chico,fb,errou_2,1,P1,Ops!,chico_fb_errou_2_v1.wav
+chico,fb,errou_3,1,P1,Quase!,chico_fb_errou_3_v1.wav
+chico,fb,ninguem_errou,1,P1,Ninguém errou! Continua!,chico_fb_ninguem_errou_v1.wav
+chico,fb,restam_dois,1,P0,Só restam dois! É a final!,chico_fb_restam_dois_v1.wav
+chico,fb,nao_vi,1,P1,Cadê você? Não consegui te ver!,chico_fb_nao_vi_v1.wav
+chico,fb,fim_de_jogo,1,P0,Fim de jogo!,chico_fb_fim_de_jogo_v1.wav
+chico,fb,campeao,1,P0,Temos um campeão! Parabéns!,chico_fb_campeao_v1.wav
+chico,fb,campeao,2,P0,Temos um campeão! Parabéns!,chico_fb_campeao_v2.wav
+chico,fb,empate,1,P1,Deu empate! Que brincadeira boa!,chico_fb_empate_v1.wav
+chico,fb,de_novo,1,P0,Vamos jogar de novo?,chico_fb_de_novo_v1.wav
+chico,cor,amarelo_errou,1,P0,Amarelo errou!,chico_cor_amarelo_errou_v1.wav
+chico,cor,amarelo_venceu,1,P0,Amarelo venceu! Parabéns!,chico_cor_amarelo_venceu_v1.wav
+chico,cor,amarelo_sumiu,1,P1,"Amarelo, saiu da câmera! Volte para o seu lugar.",chico_cor_amarelo_sumiu_v1.wav
+chico,cor,verde_errou,1,P0,Verde errou!,chico_cor_verde_errou_v1.wav
+chico,cor,verde_venceu,1,P0,Verde venceu! Parabéns!,chico_cor_verde_venceu_v1.wav
+chico,cor,verde_sumiu,1,P1,"Verde, saiu da câmera! Volte para o seu lugar.",chico_cor_verde_sumiu_v1.wav
+chico,cor,laranja_errou,1,P0,Laranja errou!,chico_cor_laranja_errou_v1.wav
+chico,cor,laranja_venceu,1,P0,Laranja venceu! Parabéns!,chico_cor_laranja_venceu_v1.wav
+chico,cor,laranja_sumiu,1,P1,"Laranja, saiu da câmera! Volte para o seu lugar.",chico_cor_laranja_sumiu_v1.wav
+chico,cor,roxo_errou,1,P0,Roxo errou!,chico_cor_roxo_errou_v1.wav
+chico,cor,roxo_venceu,1,P0,Roxo venceu! Parabéns!,chico_cor_roxo_venceu_v1.wav
+chico,cor,roxo_sumiu,1,P1,"Roxo, saiu da câmera! Volte para o seu lugar.",chico_cor_roxo_sumiu_v1.wav
+chico,cor,azul_errou,1,P0,Azul errou!,chico_cor_azul_errou_v1.wav
+chico,cor,azul_venceu,1,P0,Azul venceu! Parabéns!,chico_cor_azul_venceu_v1.wav
+chico,cor,azul_sumiu,1,P1,"Azul, saiu da câmera! Volte para o seu lugar.",chico_cor_azul_sumiu_v1.wav
+chico,cor,rosa_errou,1,P0,Rosa errou!,chico_cor_rosa_errou_v1.wav
+chico,cor,rosa_venceu,1,P0,Rosa venceu! Parabéns!,chico_cor_rosa_venceu_v1.wav
+chico,cor,rosa_sumiu,1,P1,"Rosa, saiu da câmera! Volte para o seu lugar.",chico_cor_rosa_sumiu_v1.wav
+chico,setup,intro,1,P0,"Encoste o aparelho na parede, de preferência no chão, um pouquinho inclinado para cima.",chico_setup_intro_v1.wav
+chico,setup,afastem,1,P0,"Afastem-se até eu ver todo mundo, da cabeça aos pés.",chico_setup_afastem_v1.wav
+chico,setup,passo_tras,1,P0,Deem um passinho para trás.,chico_setup_passo_tras_v1.wav
+chico,setup,passo_frente,1,P0,Deem um passinho para a frente.,chico_setup_passo_frente_v1.wav
+chico,setup,para_meio,1,P0,Cheguem mais para o meio.,chico_setup_para_meio_v1.wav
+chico,setup,sem_cabeca,1,P0,Não estou vendo a cabeça de alguém.,chico_setup_sem_cabeca_v1.wav
+chico,setup,sem_pes,1,P0,Não estou vendo os pés de alguém.,chico_setup_sem_pes_v1.wav
+chico,setup,cortado,1,P0,Tem alguém cortado na imagem.,chico_setup_cortado_v1.wav
+chico,setup,luz_fraca,1,P0,Está escuro aqui. Acendam uma luz!,chico_setup_luz_fraca_v1.wav
+chico,setup,contraluz,1,P1,A luz está atrás de vocês. Virem a luz para a frente.,chico_setup_contraluz_v1.wav
+chico,setup,parados,1,P0,"Fiquem em pé, paradinhos, de frente para mim. Vou conhecer vocês!",chico_setup_parados_v1.wav
+chico,setup,pronto,1,P0,Pronto! Já vi todo mundo!,chico_setup_pronto_v1.wav
+chico,setup,gente_demais,1,P1,Tem gente demais! Só podem brincar seis de cada vez.,chico_setup_gente_demais_v1.wav
+chico,setup,pouca_gente,1,P1,Preciso de pelo menos duas pessoas para brincar.,chico_setup_pouca_gente_v1.wav
+chico,setup,comecar_bracos,1,P0,"Para começar, levantem os dois braços!",chico_setup_comecar_bracos_v1.wav
+chico,setup,comecar_bracos,2,P0,"Para começar, levantem os dois braços!",chico_setup_comecar_bracos_v2.wav
+chico,setup,comecar_ok,1,P0,Isso! Vamos começar!,chico_setup_comecar_ok_v1.wav
+chico,setup,camera_negada,1,P2,O Agacha precisa da câmera para funcionar. Peça a um adulto para permitir nos Ajustes.,chico_setup_camera_negada_v1.wav
+chico,tut,intro,1,P1,"Olá, crianças! Eu sou o Vovô Chico! Vamos brincar de Agacha?",chico_tut_intro_v1.wav
+chico,tut,regra_classic,1,P1,"Quando eu disser VIVO, fiquem em pé. Quando eu disser MORTO, agachem!",chico_tut_regra_classic_v1.wav
+chico,tut,regra_school,1,P1,"Quando eu disser LEVANTA, fiquem em pé. Quando eu disser AGACHA, agachem!",chico_tut_regra_school_v1.wav
+chico,tut,regra_fica,1,P1,"Se já estiver na posição que eu mandar, é só ficar parado!",chico_tut_regra_fica_v1.wav
+chico,tut,regra_truque,1,P1,Mas cuidado! Às vezes eu mexo os braços ao contrário para enganar vocês. Escutem a minha voz!,chico_tut_regra_truque_v1.wav
+chico,tut,regra_fim,1,P1,Quem errar sai da brincadeira. Quem ficar por último vence! Vamos lá?,chico_tut_regra_fim_v1.wav
+chico,nav,menu_jogar,1,P2,Levantem o braço direito para jogar.,chico_nav_menu_jogar_v1.wav
+chico,nav,menu_proximo,1,P2,Levantem o braço direito para a próxima opção.,chico_nav_menu_proximo_v1.wav
+chico,nav,menu_voltar,1,P2,Levantem o braço esquerdo para voltar.,chico_nav_menu_voltar_v1.wav
+chico,nav,menu_escolha_nivel,1,P2,Escolham o nível!,chico_nav_menu_escolha_nivel_v1.wav
