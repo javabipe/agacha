@@ -13,7 +13,7 @@ import UIKit
 final class GameLoop {
     enum Stage { case idle, positioning, playing }
     /// Posicionar tem três momentos: enquadrar todos, perguntar os nomes e esperar o gesto de começar.
-    enum PositioningStep { case framing, naming, ready }
+    enum PositioningStep { case framing, naming, typing, ready }
 
     static let recentNamesKey = "recentNames"
 
@@ -38,6 +38,9 @@ final class GameLoop {
     var heardText = ""
     var isListening = false
     var namingNotice: String?
+    /// Quem está sendo digitado agora (quando a voz não está disponível) e quem ainda falta.
+    var typingSlot: ChildSlot?
+    var typingQueue: [ChildSlot] = []
     var recentNames = UserDefaults.standard.stringArray(forKey: GameLoop.recentNamesKey) ?? []
 
     let camera = CameraSession()
@@ -76,6 +79,8 @@ final class GameLoop {
         step = .framing
         if !keepSlots { names = [:] }
         namingSlot = nil
+        typingSlot = nil
+        typingQueue = []
         namingNotice = nil
         readySince = nil
         guidance = nil

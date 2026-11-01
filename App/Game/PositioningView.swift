@@ -8,6 +8,8 @@ struct PositioningView: View {
     let onBack: () -> Void
     @State private var renaming: ChildSlot?
     @State private var draft = ""
+    /// "Salvar" também fecha o alerta; evita tratar o fechamento como "Cancelar".
+    @State private var didSave = false
 
     var body: some View {
         ZStack {
@@ -29,11 +31,39 @@ struct PositioningView: View {
                     .foregroundStyle(.white)
             }
         }
-        .alert("Nome", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+        .alert(editTitle, isPresented: Binding(get: { editingSlot != nil }, set: { if !$0 { dismissEditor() } })) {
             TextField("Nome", text: $draft)
-            Button("Salvar") { if let slot = renaming { loop.setName(draft, for: slot) } }
+            Button("Salvar") { saveEditor() }
             Button("Cancelar", role: .cancel) {}
         }
+        .onChange(of: loop.typingSlot) { draft = "" }
+    }
+
+    /// Quem está sendo editado: o nome que falta digitar ou o que foi tocado.
+    private var editingSlot: ChildSlot? { loop.typingSlot ?? renaming }
+
+    private var editTitle: LocalizedStringKey {
+        "Nome de \(editingSlot.map { SlotColors.displayName($0) } ?? "")"
+    }
+
+    private func saveEditor() {
+        didSave = true
+        if loop.typingSlot != nil {
+            loop.submitTyped(draft)
+        } else if let slot = renaming {
+            loop.setName(draft, for: slot)
+            renaming = nil
+        }
+        draft = ""
+    }
+
+    private func dismissEditor() {
+        if didSave {
+            didSave = false
+            return
+        }
+        if loop.typingSlot != nil { loop.skipTyping() } else { renaming = nil }
+        draft = ""
     }
 
     private var banner: some View {
@@ -91,7 +121,7 @@ struct PositioningView: View {
             HStack(spacing: 12) {
                 Button("Voltar", systemImage: "chevron.left", action: onBack)
                     .buttonStyle(.bordered)
-                if loop.step == .naming {
+                if loop.step == .naming || loop.step == .typing {
                     Button("Pular nomes", action: loop.skipNaming)
                         .buttonStyle(.bordered)
                 }

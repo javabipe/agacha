@@ -19,12 +19,21 @@ extension GameLoop {
             let question = String(localized: "\(SlotColors.displayName(slot)), qual é o seu nome?")
             if isListening { return question + "\n🎤 " + (heardText.isEmpty ? String(localized: "Ouvindo…") : heardText) }
             return question
+        case .typing:
+            let who = typingSlot.map { SlotColors.displayName($0) } ?? ""
+            return (namingNotice.map { $0 + "\n" } ?? "") + String(localized: "Digite o nome de \(who).")
         case .ready:
             return namingNotice ?? String(localized: "Levantem os dois braços para começar!")
         }
     }
 
-    var bannerSlot: ChildSlot? { step == .naming ? namingSlot : guidance?.slot }
+    var bannerSlot: ChildSlot? {
+        switch step {
+        case .naming: namingSlot
+        case .typing: typingSlot
+        default: guidance?.slot
+        }
+    }
 
     /// Define (ou corrige) o nome de uma vaga e lembra dele para as próximas partidas.
     func setName(_ raw: String, for slot: ChildSlot) {
@@ -44,10 +53,39 @@ extension GameLoop {
     }
 
     func skipNaming() {
-        guard step == .naming else { return }
+        guard step == .naming || step == .typing else { return }
         namingTask?.cancel()
         audio.stop()
+        typingQueue = []
+        typingSlot = nil
         finishNaming()
+    }
+
+    /// Nome digitado por um adulto quando a voz não está disponível.
+    func submitTyped(_ raw: String) {
+        if let slot = typingSlot { setName(raw, for: slot) }
+        advanceTyping()
+    }
+
+    func skipTyping() {
+        advanceTyping()
+    }
+
+    private func startTyping(_ slots: [ChildSlot]) {
+        typingQueue = slots
+        step = .typing
+        advanceTyping(dropCurrent: false)
+    }
+
+    private func advanceTyping(dropCurrent: Bool = true) {
+        if dropCurrent, !typingQueue.isEmpty { typingQueue.removeFirst() }
+        namingSlot = nil
+        if let next = typingQueue.first {
+            typingSlot = next
+        } else {
+            typingSlot = nil
+            finishNaming()
+        }
     }
 
     func advanceToNames(_ report: PositioningReport, at time: Double) {
@@ -79,9 +117,13 @@ extension GameLoop {
         if introduce, !slots.isEmpty {
             await audio.play("names_intro", fallbackText: "Vou conhecer vocês! Quando eu chamar, digam o seu nome.")
         }
-        for slot in slots {
+        for (index, slot) in slots.enumerated() {
             guard !Task.isCancelled else { return }
-            guard await askName(slot) else { break }
+            if await !askName(slot) {
+                // Voz indisponível: um adulto digita os nomes que faltam.
+                startTyping(Array(slots[index...]))
+                return
+            }
         }
         guard !Task.isCancelled else { return }
         finishNaming()
@@ -119,10 +161,25 @@ extension GameLoop {
                 }
             } catch {
                 logger.error("Escuta de nome indisponível: \(String(describing: error), privacy: .public)")
-                namingNotice = String(localized: "Não consegui ouvir. Toque num nome para digitar, ou levantem os braços para começar.")
+                namingNotice = Self.message(for: error)
                 return false
             }
         }
         return true
+    }
+
+    private static func message(for error: Error) -> String {
+        switch error as? NameListener.Unavailable {
+        case .speechPermissionDenied:
+            String(localized: "Sem permissão de reconhecimento de fala (Ajustes › Agacha).")
+        case .microphonePermissionDenied:
+            String(localized: "Sem permissão de microfone (Ajustes › Agacha).")
+        case .noOnDeviceRecognition:
+            String(localized: "Este iPad não tem o ditado em português para funcionar sem internet (Ajustes › Geral › Teclado › Ditado).")
+        case .recognizerUnavailable:
+            String(localized: "O reconhecimento de fala não está disponível agora.")
+        case nil:
+            String(localized: "Não consegui usar o microfone.")
+        }
     }
 }

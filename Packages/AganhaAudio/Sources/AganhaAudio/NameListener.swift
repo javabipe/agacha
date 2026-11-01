@@ -9,9 +9,12 @@ import Speech
 /// Nada do áudio é gravado em disco nem enviado.
 @MainActor
 public final class NameListener {
-    public enum Unavailable: Error {
-        case permissionDenied
+    public enum Unavailable: Error, Equatable {
+        case speechPermissionDenied
+        case microphonePermissionDenied
+        /// O aparelho não tem o ditado do idioma instalado para funcionar sem internet.
         case noOnDeviceRecognition
+        case recognizerUnavailable
     }
 
     private final class Box: @unchecked Sendable {
@@ -47,22 +50,23 @@ public final class NameListener {
     /// Dá para reconhecer sem rede neste aparelho?
     public var supportsOnDevice: Bool { recognizer?.supportsOnDeviceRecognition ?? false }
 
-    /// Pede as permissões de microfone e reconhecimento de fala (uma vez; depois só consulta).
-    public func requestPermissions() async -> Bool {
+    /// Pede as permissões de reconhecimento de fala e microfone (a primeira vez abre os avisos do iOS).
+    /// Devolve o motivo se alguma foi negada.
+    public func requestPermissions() async -> Unavailable? {
         let speech = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
         }
-        guard speech else { return false }
-        return await AVAudioApplication.requestRecordPermission()
+        guard speech else { return .speechPermissionDenied }
+        guard await AVAudioApplication.requestRecordPermission() else { return .microphonePermissionDenied }
+        return nil
     }
 
     /// Escuta até `maxDuration` s, ou até a pessoa falar e ficar `silence` s quieta. Devolve o que ouviu.
     public func listen(maxDuration: TimeInterval = 7, silence: TimeInterval = 1.1,
                        onPartial: ((String) -> Void)? = nil) async throws -> String {
-        guard let recognizer, recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else {
-            throw Unavailable.noOnDeviceRecognition
-        }
-        guard await requestPermissions() else { throw Unavailable.permissionDenied }
+        if let denied = await requestPermissions() { throw denied }
+        guard let recognizer, recognizer.isAvailable else { throw Unavailable.recognizerUnavailable }
+        guard recognizer.supportsOnDeviceRecognition else { throw Unavailable.noOnDeviceRecognition }
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
