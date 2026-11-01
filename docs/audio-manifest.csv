@@ -193,3 +193,11 @@ chico,nav,menu_jogar,1,P2,Levantem o braço direito para jogar.,chico_nav_menu_j
 chico,nav,menu_proximo,1,P2,Levantem o braço direito para a próxima opção.,chico_nav_menu_proximo_v1.wav
 chico,nav,menu_voltar,1,P2,Levantem o braço esquerdo para voltar.,chico_nav_menu_voltar_v1.wav
 chico,nav,menu_escolha_nivel,1,P2,Escolham o nível!,chico_nav_menu_escolha_nivel_v1.wav
+lu,names,intro,1,P0,"Vou conhecer vocês! Quando eu chamar, digam o seu nome.",lu_names_intro_v1.wav
+lu,names,pergunta,1,P0,Qual é o seu nome?,lu_names_pergunta_v1.wav
+lu,names,repetir,1,P0,Não entendi. Pode repetir o seu nome?,lu_names_repetir_v1.wav
+lu,names,prazer,1,P1,Prazer em conhecer você!,lu_names_prazer_v1.wav
+chico,names,intro,1,P0,"Vou conhecer vocês! Quando eu chamar, digam o seu nome.",chico_names_intro_v1.wav
+chico,names,pergunta,1,P0,Qual é o seu nome?,chico_names_pergunta_v1.wav
+chico,names,repetir,1,P0,Não entendi. Pode repetir o seu nome?,chico_names_repetir_v1.wav
+chico,names,prazer,1,P1,Prazer em conhecer você!,chico_names_prazer_v1.wav

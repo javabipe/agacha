@@ -30,7 +30,7 @@ struct RootView: View {
     @ViewBuilder private var gameFlow: some View {
         switch (loop.stage, loop.state.phase) {
         case (.playing, .gameOver(let result)):
-            GameOverView(result: result, onPlayAgain: { loop.startPositioning(keepSlots: true) }, onMenu: leave)
+            GameOverView(result: result, name: loop.name(for:), onPlayAgain: { loop.startPositioning(keepSlots: true) }, onMenu: leave)
         case (.playing, _):
             PlayView(loop: loop, onQuit: leave)
         default:

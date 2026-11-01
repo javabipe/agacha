@@ -3,6 +3,7 @@ import SwiftUI
 
 struct GameOverView: View {
     let result: GameResult
+    let name: (ChildSlot) -> String
     let onPlayAgain: () -> Void
     let onMenu: () -> Void
 
@@ -17,7 +18,7 @@ struct GameOverView: View {
                     ForEach(result.winners, id: \.self) { slot in
                         VStack(spacing: 6) {
                             Text("🏆").font(.system(size: 90))
-                            Text(SlotColors.displayName(slot))
+                            Text(name(slot))
                                 .font(.system(size: 56, weight: .heavy, design: .rounded))
                                 .foregroundStyle(SlotPalette.color(for: slot))
                         }
@@ -26,7 +27,7 @@ struct GameOverView: View {
                         ForEach(Array(result.ranking.enumerated()), id: \.element) { index, slot in
                             HStack(spacing: 12) {
                                 Text("\(index + 1)º").font(.title2.weight(.bold)).frame(width: 52, alignment: .trailing)
-                                SlotChip(slot: slot)
+                                SlotChip(slot: slot, name: name(slot))
                             }
                             .foregroundStyle(Color.aganhaCream)
                         }

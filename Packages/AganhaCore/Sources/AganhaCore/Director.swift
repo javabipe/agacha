@@ -11,10 +11,13 @@ public struct Director: Sendable, Equatable {
         var chainChance: Double
         /// Furacão pode ter dois truques seguidos; os outros níveis não.
         var allowsConsecutiveTricks: Bool
+        /// A janela encolhe esta fração a cada comando, até `windowFloor` do valor da tolerância.
+        var windowShrink: Double
+        var windowFloor: Double
     }
 
     /// Intervalo (ms) entre comandos emendados.
-    public static let chainedGapMs = 250
+    public static let chainedGapMs = 200
 
     public let difficulty: Difficulty
     public let tolerance: Tolerance
@@ -35,14 +38,17 @@ public struct Director: Sendable, Equatable {
     private static func profile(for difficulty: Difficulty) -> Profile {
         switch difficulty {
         case .tranquilo:
-            Profile(gapStart: 2500, gapStep: 0, gapFloor: 2500, trickFromNumber: nil, trickChance: 0,
-                    repeatChance: 0.20, chainChance: 0, allowsConsecutiveTricks: false)
+            Profile(gapStart: 2200, gapStep: 40, gapFloor: 1500, trickFromNumber: nil, trickChance: 0,
+                    repeatChance: 0.22, chainChance: 0, allowsConsecutiveTricks: false,
+                    windowShrink: 0, windowFloor: 1)
         case .sapeca:
-            Profile(gapStart: 1800, gapStep: 80, gapFloor: 1000, trickFromNumber: 3, trickChance: 0.30,
-                    repeatChance: 0.25, chainChance: 0, allowsConsecutiveTricks: false)
+            Profile(gapStart: 1500, gapStep: 70, gapFloor: 700, trickFromNumber: 2, trickChance: 0.35,
+                    repeatChance: 0.25, chainChance: 0, allowsConsecutiveTricks: false,
+                    windowShrink: 0.02, windowFloor: 0.8)
         case .furacao:
-            Profile(gapStart: 1200, gapStep: 40, gapFloor: 600, trickFromNumber: 1, trickChance: 0.45,
-                    repeatChance: 0.30, chainChance: 0.25, allowsConsecutiveTricks: true)
+            Profile(gapStart: 1000, gapStep: 40, gapFloor: 400, trickFromNumber: 1, trickChance: 0.5,
+                    repeatChance: 0.30, chainChance: 0.30, allowsConsecutiveTricks: true,
+                    windowShrink: 0.03, windowFloor: 0.7)
         }
     }
 
@@ -65,9 +71,15 @@ public struct Director: Sendable, Equatable {
             : max(profile.gapFloor, profile.gapStart - profile.gapStep * (number - 1))
 
         let command = Command(number: number, word: word, gesture: gesture, isRepeat: repeats,
-                              gapMs: gap, chainsToNext: chains, windowMs: tolerance.windowMs)
+                              gapMs: gap, chainsToNext: chains, windowMs: windowMs(for: number))
         previous = command
         return command
+    }
+
+    /// Janela do comando: a tolerância escolhida, encolhendo um pouco a cada comando nos níveis mais difíceis.
+    private func windowMs(for number: Int) -> Int {
+        let factor = max(profile.windowFloor, 1 - profile.windowShrink * Double(number - 1))
+        return Int((Double(tolerance.windowMs) * factor).rounded())
     }
 
     private mutating func roll(_ probability: Double) -> Bool {

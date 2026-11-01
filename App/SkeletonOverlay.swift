@@ -14,6 +14,8 @@ struct SkeletonOverlay: View {
     let analysis: FrameAnalysis?
     /// false: o rótulo mostra só a cor da vaga (tela Posicionar).
     var showPosture = true
+    /// Nomes por vaga (rótulo da tela Posicionar).
+    var names: [ChildSlot: String] = [:]
 
     var body: some View {
         GeometryReader { geometry in
@@ -27,7 +29,7 @@ struct SkeletonOverlay: View {
                     }
                     ForEach(analysis.people) { person in
                         if let anchor = labelAnchor(for: person, in: rect) {
-                            PersonLabel(person: person, showPosture: showPosture)
+                            PersonLabel(person: person, showPosture: showPosture, names: names)
                                 .position(anchor)
                         }
                     }
@@ -75,6 +77,7 @@ struct SkeletonOverlay: View {
 private struct PersonLabel: View {
     let person: TrackedPerson
     let showPosture: Bool
+    let names: [ChildSlot: String]
 
     var body: some View {
         VStack(spacing: 2) {
@@ -103,7 +106,7 @@ private struct PersonLabel: View {
 
     private var title: String {
         guard let slot = person.slot else { return String(localized: "extra") }
-        guard showPosture else { return SlotColors.displayName(slot) }
+        guard showPosture else { return names[slot] ?? SlotColors.displayName(slot) }
         let state = switch person.reading.posture {
         case .standing: String(localized: "em pé")
         case .crouching: String(localized: "agachado")

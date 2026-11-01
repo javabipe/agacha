@@ -82,7 +82,7 @@ struct PlayView: View {
     private var statusStrip: some View {
         HStack(spacing: 8) {
             ForEach(loop.state.config?.slots ?? [], id: \.self) { slot in
-                SlotChip(slot: slot, isOut: loop.state.players[slot]?.isEliminated ?? false,
+                SlotChip(slot: slot, name: loop.name(for: slot), isOut: loop.state.players[slot]?.isEliminated ?? false,
                          detail: (loop.state.players[slot]?.isEliminated ?? false) ? "✕" : nil)
             }
         }
@@ -104,7 +104,7 @@ struct EliminatedView: View {
                         .foregroundStyle(Color.aganhaYellow)
                     ForEach(info.result.eliminated, id: \.self) { slot in
                         VStack(spacing: 8) {
-                            SlotChip(slot: slot)
+                            SlotChip(slot: slot, name: loop.name(for: slot))
                             HStack(spacing: 8) {
                                 ForEach(Array((info.replays[slot] ?? []).enumerated()), id: \.offset) { _, skeleton in
                                     SkeletonThumbnail(skeleton: skeleton, color: SlotPalette.color(for: slot))

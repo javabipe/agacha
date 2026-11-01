@@ -2,19 +2,22 @@ import AganhaCore
 import AganhaVision
 import SwiftUI
 
-/// Posicionar: prévia da câmera com esqueletos e orientação para enquadrar todos da cabeça aos pés.
+/// Posicionar: enquadrar todos da cabeça aos pés, perguntar o nome de cada um e esperar o gesto de começar.
 struct PositioningView: View {
     let loop: GameLoop
     let onBack: () -> Void
+    @State private var renaming: ChildSlot?
+    @State private var draft = ""
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             CameraPreview(camera: loop.camera).ignoresSafeArea()
-            SkeletonOverlay(analysis: loop.analysis, showPosture: false).ignoresSafeArea()
+            SkeletonOverlay(analysis: loop.analysis, showPosture: false, names: loop.names).ignoresSafeArea()
             VStack(spacing: 12) {
                 banner
                 Spacer()
+                if loop.step == .naming { recentNames }
                 people
                 actions
             }
@@ -26,12 +29,17 @@ struct PositioningView: View {
                     .foregroundStyle(.white)
             }
         }
+        .alert("Nome", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Nome", text: $draft)
+            Button("Salvar") { if let slot = renaming { loop.setName(draft, for: slot) } }
+            Button("Cancelar", role: .cancel) {}
+        }
     }
 
     private var banner: some View {
         HStack(spacing: 12) {
-            if let slot = loop.guidance?.slot { Circle().fill(SlotPalette.color(for: slot)).frame(width: 28, height: 28) }
-            Text(loop.guidance?.text ?? String(localized: "Procurando vocês…"))
+            if let slot = loop.bannerSlot { Circle().fill(SlotPalette.color(for: slot)).frame(width: 28, height: 28) }
+            Text(loop.bannerText)
                 .font(.title2.weight(.bold))
                 .multilineTextAlignment(.leading)
             Spacer(minLength: 0)
@@ -41,10 +49,36 @@ struct PositioningView: View {
         .foregroundStyle(.white)
     }
 
+    /// Nomes de partidas anteriores: um toque responde no lugar da voz.
+    private var recentNames: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                ForEach(loop.recentNames, id: \.self) { name in
+                    Button(name) { loop.useRecentName(name) }
+                        .buttonStyle(.bordered)
+                        .tint(.white)
+                }
+            }
+        }
+    }
+
     private var people: some View {
         HStack {
             ForEach(loop.report.people, id: \.slot) { person in
-                SlotChip(slot: person.slot, isOut: !person.isReady, detail: person.isReady ? "✓" : "!")
+                Button {
+                    draft = loop.names[person.slot] ?? ""
+                    renaming = person.slot
+                } label: {
+                    SlotChip(slot: person.slot, name: loop.name(for: person.slot), isOut: !person.isReady,
+                             detail: person.isReady ? "✓" : "!")
+                        .overlay {
+                            if loop.namingSlot == person.slot {
+                                Capsule().stroke(.white, lineWidth: 3)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Toque para mudar o nome")
             }
             if loop.report.extraPeople > 0 {
                 Text("+\(loop.report.extraPeople) além de 6").font(.caption).foregroundStyle(.white)
@@ -57,6 +91,10 @@ struct PositioningView: View {
             HStack(spacing: 12) {
                 Button("Voltar", systemImage: "chevron.left", action: onBack)
                     .buttonStyle(.bordered)
+                if loop.step == .naming {
+                    Button("Pular nomes", action: loop.skipNaming)
+                        .buttonStyle(.bordered)
+                }
                 Button {
                     loop.startGame()
                 } label: {

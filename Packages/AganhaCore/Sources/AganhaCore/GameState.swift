@@ -6,15 +6,18 @@ public struct GameConfig: Sendable, Equatable {
     public var seed: UInt64
     /// Quantos comandos seguidos "ausente" até a criança ser eliminada (saiu da câmera).
     public var maxAbsentStreak: Int
+    public var rules: JudgeRules
 
     public init(slots: [ChildSlot], difficulty: Difficulty = .sapeca, tolerance: Tolerance = .normal,
-                commandSet: CommandSet = .classic, seed: UInt64, maxAbsentStreak: Int = 3) {
+                commandSet: CommandSet = .classic, seed: UInt64, maxAbsentStreak: Int = 3,
+                rules: JudgeRules = JudgeRules()) {
         self.slots = slots
         self.difficulty = difficulty
         self.tolerance = tolerance
         self.commandSet = commandSet
         self.seed = seed
         self.maxAbsentStreak = maxAbsentStreak
+        self.rules = rules
     }
 }
 

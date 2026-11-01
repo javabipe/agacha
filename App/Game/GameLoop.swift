@@ -6,36 +6,16 @@ import Observation
 import os
 import UIKit
 
-struct GameSettings: Equatable {
-    var difficulty: Difficulty = .sapeca
-    var tolerance: Tolerance = .normal
-    var commandSet: CommandSet = .classic
-}
-
-/// Orientação falada e escrita na tela Posicionar.
-struct Guidance: Equatable {
-    let clip: String
-    let text: String
-    let slot: ChildSlot?
-}
-
-/// O que a tela "Alguém errou" mostra depois de uma rodada.
-struct ResultInfo: Equatable {
-    let result: RoundResult
-    /// Até 3 quadros de esqueleto por criança eliminada.
-    let replays: [ChildSlot: [Skeleton]]
-    let continueAt: Double
-    let duration: Double
-    /// Mostra os botões "Foi injusto!" e "Continuar".
-    let isManual: Bool
-}
-
 /// Orquestra relógio, Director/Reducer (AganhaCore), áudio e Vision → Judge → UI.
 /// Roda na main thread; o `GameReducer` serializa todas as decisões de regra.
 @MainActor
 @Observable
 final class GameLoop {
     enum Stage { case idle, positioning, playing }
+    /// Posicionar tem três momentos: enquadrar todos, perguntar os nomes e esperar o gesto de começar.
+    enum PositioningStep { case framing, naming, ready }
+
+    static let recentNamesKey = "recentNames"
 
     static let continueDelay = 5.0
     /// Espera depois do fim da janela para as últimas amostras da câmera (latência do Vision) chegarem.
@@ -52,18 +32,28 @@ final class GameLoop {
     private(set) var countdownText: String?
     private(set) var shownCommand: Command?
     private(set) var resultInfo: ResultInfo?
+    var step: PositioningStep = .framing
+    var names: [ChildSlot: String] = [:]
+    var namingSlot: ChildSlot?
+    var heardText = ""
+    var isListening = false
+    var namingNotice: String?
+    var recentNames = UserDefaults.standard.stringArray(forKey: GameLoop.recentNamesKey) ?? []
 
     let camera = CameraSession()
     private let pipeline = PosePipeline()
-    private let audio = AudioPlayer()
+    let audio = AudioPlayer()
+    let listener = NameListener()
     private var replay = ReplayBuffer()
-    private let logger = Logger(subsystem: "br.com.agacha.app", category: "gameloop")
+    let logger = Logger(subsystem: "br.com.agacha.app", category: "gameloop")
 
     private var cameraRunning = false
-    private var gameTask: Task<Void, Never>?
+    var gameTask: Task<Void, Never>?
     private var closeTask: Task<Void, Never>?
     private var resultTask: Task<Void, Never>?
-    private var promptTask: Task<Void, Never>?
+    var promptTask: Task<Void, Never>?
+    var namingTask: Task<Void, Never>?
+    var readySince: Double?
 
     private var candidate: Guidance?
     private var candidateSince = 0.0
@@ -83,6 +73,11 @@ final class GameLoop {
         send(.quit)
         stage = .positioning
         report = .empty
+        step = .framing
+        if !keepSlots { names = [:] }
+        namingSlot = nil
+        namingNotice = nil
+        readySince = nil
         guidance = nil
         candidate = nil
         spoken = nil
@@ -108,6 +103,7 @@ final class GameLoop {
         let slots = anyway ? report.people.map(\.slot) : report.readySlots
         guard slots.count >= 2 else { return }
         promptTask?.cancel()
+        namingTask?.cancel()
         audio.stop()
         // Durante o posicionamento as pessoas se mexem; a referência de "em pé" é refeita agora, com todos parados.
         pipeline.requestRecalibration()
@@ -173,14 +169,18 @@ final class GameLoop {
             break
         case .positioning:
             report = PositioningCheck.evaluate(analysis)
-            updateGuidance(report)
+            if step == .framing {
+                updateGuidance(report)
+                advanceToNames(report, at: analysis.timestamp)
+            }
             checkRaisedArms(report, at: analysis.timestamp)
         case .playing:
             replay.append(analysis)
             guard case .window = state.phase else { return }
             let samples = analysis.people.compactMap { person -> PostureSample? in
                 guard let slot = person.slot else { return nil }
-                return PostureSample(childSlot: slot, posture: person.reading.posture, timestamp: analysis.timestamp)
+                return PostureSample(childSlot: slot, posture: person.reading.posture, timestamp: analysis.timestamp,
+                                     crouchIndex: person.reading.crouchIndex)
             }
             send(.postureSamples(samples))
         }
@@ -189,7 +189,8 @@ final class GameLoop {
     // MARK: - Posicionar
 
     private func checkRaisedArms(_ report: PositioningReport, at time: Double) {
-        guard report.allReady, report.anyRaisingBothArms else {
+        let canStart = step == .ready || (!settings.askNames && step == .framing)
+        guard canStart, report.allReady, report.anyRaisingBothArms else {
             handsUpSince = nil
             return
         }
@@ -215,6 +216,7 @@ final class GameLoop {
         if report.people.count < report.minPlayers {
             return make("setup_pouca_gente", "Preciso de pelo menos duas pessoas para brincar.")
         }
+        if settings.askNames { return make("setup_pronto", "Pronto! Já vi todo mundo!") }
         return make("setup_comecar_bracos", "Prontos! Levantem os dois braços para começar.")
     }
 
@@ -232,10 +234,6 @@ final class GameLoop {
         spoken = next
         lastSpokenAt = time
         promptTask = Task {
-            if next.clip == "setup_comecar_bracos" {
-                await audio.play("setup_pronto", fallbackText: "Pronto! Já vi todo mundo!")
-            }
-            guard !Task.isCancelled else { return }
             await audio.play(next.clip, fallbackText: next.text)
             lastSpokenAt = Self.now()
         }
@@ -340,39 +338,12 @@ final class GameLoop {
         }
     }
 
-    private func playFeedback(for result: RoundResult) async {
-        if result.isTie {
-            await audio.play("fb_empate", fallbackText: "Todos erraram juntos!")
-            return
-        }
-        for slot in result.eliminated {
-            let name = SlotColors.name(slot)
-            await audio.play("cor_\(name)_errou", fallbackText: "\(SlotColors.displayName(slot)) errou!")
-            if Task.isCancelled { return }
-        }
-        if result.finished == nil, !result.eliminated.isEmpty, result.survivors.count == 2 {
-            await audio.play("fb_restam_dois", fallbackText: "Só restam dois! É a final!")
-        }
-    }
-
-    private func celebrate(_ result: GameResult) {
-        gameTask = Task {
-            if let winner = result.winners.first, !result.isTie {
-                await audio.play("cor_\(SlotColors.name(winner))_venceu",
-                                 fallbackText: "\(SlotColors.displayName(winner)) venceu! Parabéns!")
-                guard !Task.isCancelled else { return }
-                await audio.play("fb_campeao", fallbackText: "Temos um campeão! Parabéns!")
-            } else {
-                await audio.play("fb_fim_de_jogo", fallbackText: "Fim de jogo!")
-            }
-        }
-    }
-
     private func cancelGame() {
         gameTask?.cancel()
         closeTask?.cancel()
         resultTask?.cancel()
         promptTask?.cancel()
+        namingTask?.cancel()
         audio.stop()
         shownCommand = nil
         countdownText = nil

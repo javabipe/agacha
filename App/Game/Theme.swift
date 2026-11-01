@@ -24,13 +24,15 @@ enum Theme {
 /// Bolinha com a cor e o nome da vaga.
 struct SlotChip: View {
     let slot: ChildSlot
+    /// Nome do jogador; sem nome, usa a cor.
+    var name: String?
     var isOut = false
     var detail: String?
 
     var body: some View {
         HStack(spacing: 6) {
             Circle().fill(SlotPalette.color(for: slot)).frame(width: 18, height: 18)
-            Text(SlotColors.displayName(slot)).font(.headline)
+            Text(name ?? SlotColors.displayName(slot)).font(.headline)
             if let detail { Text(detail).font(.headline) }
         }
         .padding(.horizontal, 12)

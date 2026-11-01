@@ -51,4 +51,35 @@ import Testing
         #expect(Judge.verdict(expected: .up, samples: [sample(.unknown, at: 1.0)], windowEnd: 1.0) == .absent)
         #expect(Judge.verdict(expected: .up, samples: [sample(.standing, at: 0.5)], windowEnd: 1.0) == .absent)
     }
+
+    // MARK: - Meio movimento é erro
+
+    private func measured(_ posture: Posture, index: Double, at time: Double = 1.0) -> PostureSample {
+        PostureSample(childSlot: 0, posture: posture, timestamp: time, crouchIndex: index)
+    }
+
+    @Test func fullStandingAndFullCrouchAreOk() {
+        #expect(Judge.verdict(expected: .up, samples: [measured(.standing, index: 0.05)], windowEnd: 1.0) == .ok)
+        #expect(Judge.verdict(expected: .down, samples: [measured(.crouching, index: 0.8)], windowEnd: 1.0) == .ok)
+    }
+
+    @Test func halfSquatWhileToldToStandIsWrong() {
+        // Ainda classificado "em pé" (histerese), mas o quadril já desceu: meio movimento.
+        #expect(Judge.verdict(expected: .up, samples: [measured(.standing, index: 0.38)], windowEnd: 1.0) == .wrong)
+    }
+
+    @Test func halfRiseWhileToldToCrouchIsWrong() {
+        #expect(Judge.verdict(expected: .down, samples: [measured(.crouching, index: 0.32)], windowEnd: 1.0) == .wrong)
+    }
+
+    @Test func halfwayOnTheWayUpIsWrongWhenWindowEnds() {
+        // Estava agachado, levantou só até o meio quando a janela fechou.
+        #expect(Judge.verdict(expected: .up, samples: [measured(.crouching, index: 0.35)], windowEnd: 1.0) == .wrong)
+    }
+
+    @Test func customRulesChangeTheThresholds() {
+        let loose = JudgeRules(standMax: 0.5, crouchMin: 0.3)
+        #expect(Judge.verdict(expected: .up, samples: [measured(.standing, index: 0.4)], windowEnd: 1.0, rules: loose) == .ok)
+        #expect(Judge.verdict(expected: .down, samples: [measured(.crouching, index: 0.35)], windowEnd: 1.0, rules: loose) == .ok)
+    }
 }

@@ -25,6 +25,9 @@ struct MenuView: View {
                         picker("Nível", selection: $loop.settings.difficulty, options: Difficulty.allCases, label: Self.name)
                         picker("Tempo para reagir", selection: $loop.settings.tolerance, options: Tolerance.allCases, label: Self.name)
                         picker("Comandos", selection: $loop.settings.commandSet, options: [.classic, .school], label: Self.name)
+                        Toggle("Perguntar o nome de cada jogador", isOn: $loop.settings.askNames)
+                            .font(.headline)
+                            .foregroundStyle(Color.aganhaCream)
                     }
                     .padding(20)
                     .background(.black.opacity(0.3), in: .rect(cornerRadius: 20))

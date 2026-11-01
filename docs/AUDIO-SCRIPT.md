@@ -160,3 +160,14 @@ Pastas sugeridas: `pt-BR/lu/` e `pt-BR/chico/` (todos os arquivos do locutor jun
 | `nav_menu_proximo` | Levantem o braço direito para a próxima opção. | 1 | P2 | Calmo e simpático, pausado, como quem explica para uma criança de 5 anos e um avô ao mesmo tempo. |
 | `nav_menu_voltar` | Levantem o braço esquerdo para voltar. | 1 | P2 | Calmo e simpático, pausado, como quem explica para uma criança de 5 anos e um avô ao mesmo tempo. |
 | `nav_menu_escolha_nivel` | Escolham o nível! | 1 | P2 | Calmo e simpático, pausado, como quem explica para uma criança de 5 anos e um avô ao mesmo tempo. |
+
+## 8. Perguntar o nome dos jogadores (novo)
+
+| ID | Texto | Variações | Prior. | Direção |
+|---|---|---|---|---|
+| `names_intro` | Vou conhecer vocês! Quando eu chamar, digam o seu nome. | 1 | P0 | Calmo e simpático; faça uma pequena pausa no final, a pessoa vai responder em seguida. |
+| `names_pergunta` | Qual é o seu nome? | 1 | P0 | Calmo e simpático; faça uma pequena pausa no final, a pessoa vai responder em seguida. |
+| `names_repetir` | Não entendi. Pode repetir o seu nome? | 1 | P0 | Calmo e simpático; faça uma pequena pausa no final, a pessoa vai responder em seguida. |
+| `names_prazer` | Prazer em conhecer você! | 1 | P1 | Calmo e simpático; faça uma pequena pausa no final, a pessoa vai responder em seguida. |
+
+Os nomes das crianças continuam sendo falados pela voz do sistema (ex.: "Paulo errou!").

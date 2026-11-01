@@ -17,11 +17,14 @@ public struct PostureSample: Sendable, Equatable {
     public let childSlot: ChildSlot
     public let posture: Posture
     public let timestamp: Double
+    /// Quanto o quadril desceu, em comprimentos de tronco (0 = em pé). nil se não foi medido.
+    public let crouchIndex: Double?
 
-    public init(childSlot: ChildSlot, posture: Posture, timestamp: Double) {
+    public init(childSlot: ChildSlot, posture: Posture, timestamp: Double, crouchIndex: Double? = nil) {
         self.childSlot = childSlot
         self.posture = posture
         self.timestamp = timestamp
+        self.crouchIndex = crouchIndex
     }
 }
 

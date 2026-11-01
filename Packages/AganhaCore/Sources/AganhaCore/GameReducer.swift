@@ -100,7 +100,8 @@ public enum GameReducer {
         var eliminated: [ChildSlot] = []
 
         for slot in before {
-            let verdict = Judge.verdict(expected: command.word, samples: state.samples[slot] ?? [], windowEnd: windowEnd)
+            let verdict = Judge.verdict(expected: command.word, samples: state.samples[slot] ?? [], windowEnd: windowEnd,
+                                        rules: state.config?.rules ?? JudgeRules())
             verdicts[slot] = verdict
             var player = state.players[slot] ?? PlayerState()
             switch verdict {
