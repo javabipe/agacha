@@ -21,9 +21,11 @@ build: project
 		-destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 
 test:
+	@mkdir -p .build/modcache
 	@set -e; for p in $(TESTED); do \
 		echo "== swift test: $$p"; \
-		swift test --package-path Packages/$$p; \
+		CLANG_MODULE_CACHE_PATH=$(CURDIR)/.build/modcache SWIFTPM_MODULECACHE_OVERRIDE=$(CURDIR)/.build/modcache \
+			swift test --package-path Packages/$$p; \
 	done
 
 lint:
