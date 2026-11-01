@@ -1,5 +1,6 @@
 import AganhaCore
 import AganhaVision
+import Foundation
 
 struct GameSettings: Equatable {
     var difficulty: Difficulty = .sapeca
@@ -24,4 +25,27 @@ struct ResultInfo: Equatable {
     let duration: Double
     /// Mostra os botões "Foi injusto!" e "Continuar".
     let isManual: Bool
+}
+
+/// Jogador já apresentado nesta sessão (rosto reconhecido ou novo).
+struct MetPlayer: Identifiable, Equatable {
+    let id: UUID
+    let name: String
+    /// Cor da roupa de hoje, para ligar a vaga ao jogador quando a pessoa está longe.
+    let clothing: AppearanceSignature?
+    let isNew: Bool
+}
+
+/// Pedido de nome digitado por um adulto (quando a voz não ajuda).
+struct TypingRequest: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+}
+
+/// Rosto capturado de perto: impressões e cor da roupa.
+struct FaceCapture {
+    let prints: [FacePrint]
+    let clothing: AppearanceSignature?
+    /// Razão do reconhecimento (menor = mais seguro); só preenchida ao reconhecer.
+    var ratio: Double?
 }

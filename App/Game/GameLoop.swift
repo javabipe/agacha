@@ -2,6 +2,7 @@ import AganhaAudio
 import AganhaCore
 import AganhaVision
 import CoreMedia
+import Foundation
 import Observation
 import os
 import UIKit
@@ -12,8 +13,9 @@ import UIKit
 @Observable
 final class GameLoop {
     enum Stage { case idle, positioning, playing }
-    /// Posicionar tem três momentos: enquadrar todos, perguntar os nomes e esperar o gesto de começar.
-    enum PositioningStep { case framing, naming, typing, ready }
+    /// Antes da partida: conhecer os rostos de perto, mudar o aparelho de lugar, enquadrar todos,
+    /// ligar cada vaga a um jogador (ou perguntar o nome) e esperar o gesto de começar.
+    enum PositioningStep { case meeting, placing, framing, identifying, naming, ready }
 
     static let recentNamesKey = "recentNames"
 
@@ -27,7 +29,7 @@ final class GameLoop {
     private(set) var state = GameState()
     private(set) var analysis: FrameAnalysis?
     private(set) var report = PositioningReport.empty
-    private(set) var guidance: Guidance?
+    var guidance: Guidance?
     private(set) var cameraError: String?
     private(set) var countdownText: String?
     private(set) var shownCommand: Command?
@@ -38,13 +40,23 @@ final class GameLoop {
     var heardText = ""
     var isListening = false
     var namingNotice: String?
-    /// Quem está sendo digitado agora (quando a voz não está disponível) e quem ainda falta.
-    var typingSlot: ChildSlot?
-    var typingQueue: [ChildSlot] = []
+    /// Jogadores já apresentados nesta sessão e a vaga de cada um na tela.
+    var met: [MetPlayer] = []
+    var slotPlayers: [ChildSlot: UUID] = [:]
+    var meetingPrompt = ""
+    var faceProgress = 0.0
+    var faceHint: String?
+    var recognitionDebug: String?
+    /// Quem acabou de ser reconhecido (tem uns segundos para dizer "não sou eu").
+    var recognizedCandidate: MetPlayer?
+    var awaitingName = false
+    var consentRequest = false
+    var typingRequest: TypingRequest?
     var recentNames = UserDefaults.standard.stringArray(forKey: GameLoop.recentNamesKey) ?? []
 
     let camera = CameraSession()
-    private let pipeline = PosePipeline()
+    let pipeline = PosePipeline()
+    let profileStore = ProfileStore()
     let audio = AudioPlayer()
     let listener = NameListener()
     private var replay = ReplayBuffer()
@@ -56,13 +68,23 @@ final class GameLoop {
     private var resultTask: Task<Void, Never>?
     var promptTask: Task<Void, Never>?
     var namingTask: Task<Void, Never>?
+    var meetingTask: Task<Void, Never>?
+    var listenTask: Task<String, Error>?
     var readySince: Double?
+    var consentContinuation: CheckedContinuation<Bool, Never>?
+    var typingContinuation: CheckedContinuation<String?, Never>?
+    var faceBuffer: [(time: Double, scan: FaceScan)] = []
+    var slotSignatures: [ChildSlot: [AppearanceSignature]] = [:]
+    var finishMeetingRequested = false
+    var rejectRequested = false
+    var placementConfirmed = false
+    var quickName: String?
 
-    private var candidate: Guidance?
-    private var candidateSince = 0.0
-    private var spoken: Guidance?
-    private var lastSpokenAt = 0.0
-    private var handsUpSince: Double?
+    var candidate: Guidance?
+    var candidateSince = 0.0
+    var spoken: Guidance?
+    var lastSpokenAt = 0.0
+    var handsUpSince: Double?
 
     nonisolated static func now() -> Double {
         CMClockGetTime(CMClockGetHostTimeClock()).seconds
@@ -76,11 +98,20 @@ final class GameLoop {
         send(.quit)
         stage = .positioning
         report = .empty
-        step = .framing
-        if !keepSlots { names = [:] }
+        let meet = settings.askNames && !keepSlots
+        step = meet ? .meeting : .framing
+        if !keepSlots {
+            names = [:]
+            slotPlayers = [:]
+        }
+        met = []
+        meetingPrompt = ""
+        faceHint = nil
+        faceProgress = 0
+        recognitionDebug = nil
+        pipeline.mode = .pose
+        pipeline.computeAppearance = false
         namingSlot = nil
-        typingSlot = nil
-        typingQueue = []
         namingNotice = nil
         readySince = nil
         guidance = nil
@@ -90,7 +121,10 @@ final class GameLoop {
         if !keepSlots { pipeline.requestReset() }
         replay.clear()
         UIApplication.shared.isIdleTimerDisabled = true
-        Task { await startCamera() }
+        Task {
+            await startCamera()
+            if meet, stage == .positioning { beginMeeting() }
+        }
     }
 
     /// Sai para o menu: para tudo e desliga a câmera.
@@ -98,6 +132,8 @@ final class GameLoop {
         cancelGame()
         send(.quit)
         stage = .idle
+        pipeline.mode = .pose
+        pipeline.computeAppearance = false
         stopCamera()
         UIApplication.shared.isIdleTimerDisabled = false
     }
@@ -109,6 +145,8 @@ final class GameLoop {
         guard slots.count >= 2 else { return }
         promptTask?.cancel()
         namingTask?.cancel()
+        meetingTask?.cancel()
+        pipeline.computeAppearance = false
         audio.stop()
         // Durante o posicionamento as pessoas se mexem; a referência de "em pé" é refeita agora, com todos parados.
         pipeline.requestRecalibration()
@@ -173,11 +211,16 @@ final class GameLoop {
         case .idle:
             break
         case .positioning:
+            if step == .meeting {
+                observeFace(analysis)
+                return
+            }
             report = PositioningCheck.evaluate(analysis)
             if step == .framing {
                 updateGuidance(report)
-                advanceToNames(report, at: analysis.timestamp)
+                advanceWhenReady(report, at: analysis.timestamp)
             }
+            if step == .identifying { collectAppearance(analysis) }
             checkRaisedArms(report, at: analysis.timestamp)
         case .playing:
             replay.append(analysis)
@@ -188,59 +231,6 @@ final class GameLoop {
                                      crouchIndex: person.reading.crouchIndex)
             }
             send(.postureSamples(samples))
-        }
-    }
-
-    // MARK: - Posicionar
-
-    private func checkRaisedArms(_ report: PositioningReport, at time: Double) {
-        let canStart = step == .ready || (!settings.askNames && step == .framing)
-        guard canStart, report.allReady, report.anyRaisingBothArms else {
-            handsUpSince = nil
-            return
-        }
-        let since = handsUpSince ?? time
-        handsUpSince = since
-        if time - since >= Self.handsUpHold { startGame() }
-    }
-
-    private func guidance(for report: PositioningReport) -> Guidance {
-        func make(_ clip: String, _ text: String.LocalizationValue, slot: ChildSlot? = nil) -> Guidance {
-            Guidance(clip: clip, text: String(localized: text), slot: slot)
-        }
-        if report.people.isEmpty {
-            return make("setup_afastem", "Afastem-se até eu ver todo mundo, da cabeça aos pés.")
-        }
-        if let problem = report.firstProblem, let issue = problem.issue {
-            switch issue {
-            case .noHead: return make("setup_sem_cabeca", "Não estou vendo a cabeça de alguém.", slot: problem.slot)
-            case .noFeet: return make("setup_sem_pes", "Não estou vendo os pés de alguém.", slot: problem.slot)
-            case .cutOff: return make("setup_cortado", "Tem alguém cortado na imagem.", slot: problem.slot)
-            }
-        }
-        if report.people.count < report.minPlayers {
-            return make("setup_pouca_gente", "Preciso de pelo menos duas pessoas para brincar.")
-        }
-        if settings.askNames { return make("setup_pronto", "Pronto! Já vi todo mundo!") }
-        return make("setup_comecar_bracos", "Prontos! Levantem os dois braços para começar.")
-    }
-
-    /// Só fala quando a orientação fica estável por um instante e não repete a mesma a cada quadro.
-    private func updateGuidance(_ report: PositioningReport) {
-        let next = guidance(for: report)
-        let time = Self.now()
-        if next != candidate {
-            candidate = next
-            candidateSince = time
-        }
-        let stable = time - candidateSince
-        if stable > 0.8, next != guidance { guidance = next }
-        guard stable > 1.2, !audio.isPlaying, next != spoken || time - lastSpokenAt > 12 else { return }
-        spoken = next
-        lastSpokenAt = time
-        promptTask = Task {
-            await audio.play(next.clip, fallbackText: next.text)
-            lastSpokenAt = Self.now()
         }
     }
 
@@ -349,7 +339,13 @@ final class GameLoop {
         resultTask?.cancel()
         promptTask?.cancel()
         namingTask?.cancel()
+        meetingTask?.cancel()
+        listenTask?.cancel()
+        answerConsent(false)
+        resolveTyping(nil)
         audio.stop()
+        awaitingName = false
+        recognizedCandidate = nil
         shownCommand = nil
         countdownText = nil
         resultInfo = nil

@@ -201,3 +201,11 @@ chico,names,intro,1,P0,"Vou conhecer vocês! Quando eu chamar, digam o seu nome.
 chico,names,pergunta,1,P0,Qual é o seu nome?,chico_names_pergunta_v1.wav
 chico,names,repetir,1,P0,Não entendi. Pode repetir o seu nome?,chico_names_repetir_v1.wav
 chico,names,prazer,1,P1,Prazer em conhecer você!,chico_names_prazer_v1.wav
+lu,meet,intro,1,P0,Vamos conhecer vocês!,lu_meet_intro_v1.wav
+lu,meet,first,1,P0,Quem é o primeiro? Chegue perto e mostre o seu rosto.,lu_meet_first_v1.wav
+lu,meet,more,1,P0,"Tem mais alguém? Mostre o rosto, ou toque em Pronto.",lu_meet_more_v1.wav
+lu,meet,place,1,P0,"Agora coloque o aparelho em pé, encostado no chão e apoiado na parede.",lu_meet_place_v1.wav
+chico,meet,intro,1,P0,Vamos conhecer vocês!,chico_meet_intro_v1.wav
+chico,meet,first,1,P0,Quem é o primeiro? Chegue perto e mostre o seu rosto.,chico_meet_first_v1.wav
+chico,meet,more,1,P0,"Tem mais alguém? Mostre o rosto, ou toque em Pronto.",chico_meet_more_v1.wav
+chico,meet,place,1,P0,"Agora coloque o aparelho em pé, encostado no chão e apoiado na parede.",chico_meet_place_v1.wav
