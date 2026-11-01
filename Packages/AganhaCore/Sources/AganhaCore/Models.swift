@@ -48,11 +48,13 @@ public enum Tolerance: String, Codable, Sendable, CaseIterable {
     case normal
     case rigido
 
+    /// Duração da janela de julgamento (ms), que começa 300 ms depois do início do áudio.
+    /// Precisa caber a reação (~0,4 s), levantar de um agachamento (~0,8 s) e a confirmação da postura.
     public var windowMs: Int {
         switch self {
-        case .pequenos: 1100
-        case .normal: 800
-        case .rigido: 500
+        case .pequenos: 2400
+        case .normal: 1800
+        case .rigido: 1200
         }
     }
 }

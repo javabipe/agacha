@@ -84,8 +84,8 @@ import Testing
     }
 
     @Test func windowFollowsTolerance() {
-        #expect(commands(.sapeca, count: 3, tolerance: .pequenos).allSatisfy { $0.windowMs == 1100 })
-        #expect(commands(.sapeca, count: 3, tolerance: .normal).allSatisfy { $0.windowMs == 800 })
-        #expect(commands(.sapeca, count: 3, tolerance: .rigido).allSatisfy { $0.windowMs == 500 })
+        #expect(commands(.sapeca, count: 3, tolerance: .pequenos).allSatisfy { $0.windowMs == 2400 })
+        #expect(commands(.sapeca, count: 3, tolerance: .normal).allSatisfy { $0.windowMs == 1800 })
+        #expect(commands(.sapeca, count: 3, tolerance: .rigido).allSatisfy { $0.windowMs == 1200 })
     }
 }
