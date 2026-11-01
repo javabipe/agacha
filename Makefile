@@ -11,7 +11,7 @@ PACKAGES  := AganhaCore AganhaVision AganhaAudio AganhaUI AganhaStore
 # Pacotes com testes que rodam no macOS via `swift test`
 TESTED    := AganhaCore AganhaVision
 
-.PHONY: project build test lint clean
+.PHONY: project build test lint clean audio audio-missing
 
 project:
 	$(XCODEGEN) generate
@@ -28,6 +28,12 @@ test:
 
 lint:
 	$(SWIFTLINT) lint --quiet
+
+audio:
+	python3 scripts/process_audio.py
+
+audio-missing:
+	python3 scripts/process_audio.py --missing
 
 clean:
 	rm -rf $(PROJECT) App/Info.plist
