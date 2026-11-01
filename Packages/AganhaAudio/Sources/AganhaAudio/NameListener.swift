@@ -4,16 +4,13 @@ import Foundation
 import os
 import Speech
 
-/// Escuta uma criança dizer o nome. O reconhecimento é **somente no aparelho**
-/// (`requiresOnDeviceRecognition`): se o aparelho não tiver o idioma offline, não escuta.
-/// Nada do áudio é gravado em disco nem enviado.
+/// Escuta uma criança dizer o nome. Usa o reconhecimento no próprio aparelho quando o idioma está
+/// disponível offline; senão o iOS pode processar o áudio nos servidores da Apple. Nada é gravado em disco.
 @MainActor
 public final class NameListener {
     public enum Unavailable: Error, Equatable {
         case speechPermissionDenied
         case microphonePermissionDenied
-        /// O aparelho não tem o ditado do idioma instalado para funcionar sem internet.
-        case noOnDeviceRecognition
         case recognizerUnavailable
     }
 
@@ -47,15 +44,36 @@ public final class NameListener {
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: locale))
     }
 
+    // Os blocos abaixo são chamados pelo iOS em filas de fundo. Criados dentro de um método `@MainActor`
+    // herdariam o isolamento e abortariam o app; por isso nascem em funções `nonisolated`.
+
+    private nonisolated static func requestSpeechAuthorization() async -> Bool {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
+        }
+    }
+
+    private nonisolated static func makeTap(_ box: RequestBox) -> AVAudioNodeTapBlock {
+        { buffer, _ in box.request.append(buffer) }
+    }
+
+    private nonisolated static func makeHandler(_ box: Box) -> @Sendable (SFSpeechRecognitionResult?, Error?) -> Void {
+        { result, error in
+            if let result {
+                box.update(text: result.bestTranscription.formattedString, isFinal: result.isFinal)
+            } else if error != nil {
+                box.update(text: box.snapshot.text, isFinal: true)
+            }
+        }
+    }
+
     /// Dá para reconhecer sem rede neste aparelho?
     public var supportsOnDevice: Bool { recognizer?.supportsOnDeviceRecognition ?? false }
 
     /// Pede as permissões de reconhecimento de fala e microfone (a primeira vez abre os avisos do iOS).
     /// Devolve o motivo se alguma foi negada.
     public func requestPermissions() async -> Unavailable? {
-        let speech = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
-        }
+        let speech = await Self.requestSpeechAuthorization()
         guard speech else { return .speechPermissionDenied }
         guard await AVAudioApplication.requestRecordPermission() else { return .microphonePermissionDenied }
         return nil
@@ -66,7 +84,6 @@ public final class NameListener {
                        onPartial: ((String) -> Void)? = nil) async throws -> String {
         if let denied = await requestPermissions() { throw denied }
         guard let recognizer, recognizer.isAvailable else { throw Unavailable.recognizerUnavailable }
-        guard recognizer.supportsOnDeviceRecognition else { throw Unavailable.noOnDeviceRecognition }
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
@@ -75,24 +92,17 @@ public final class NameListener {
 
         let engine = AVAudioEngine()
         let requestBox = RequestBox()
-        requestBox.request.requiresOnDeviceRecognition = true
+        // Prefere o aparelho quando possível; sem o idioma offline, o iOS usa o reconhecimento da Apple (com internet).
+        requestBox.request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
         requestBox.request.shouldReportPartialResults = true
         let box = Box()
 
         let input = engine.inputNode
-        input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { buffer, _ in
-            requestBox.request.append(buffer)
-        }
+        input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0), block: Self.makeTap(requestBox))
         engine.prepare()
         try engine.start()
 
-        let task = recognizer.recognitionTask(with: requestBox.request) { result, error in
-            if let result {
-                box.update(text: result.bestTranscription.formattedString, isFinal: result.isFinal)
-            } else if error != nil {
-                box.update(text: box.snapshot.text, isFinal: true)
-            }
-        }
+        let task = recognizer.recognitionTask(with: requestBox.request, resultHandler: Self.makeHandler(box))
 
         let start = Date()
         var lastReported = ""

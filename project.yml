@@ -48,8 +48,8 @@ targets:
       properties:
         CFBundleDisplayName: Agacha
         CFBundleLocalizations: [pt-BR, en]
-        NSMicrophoneUsageDescription: O microfone ouve o nome de cada jogador para a tia poder chamar cada um pelo nome. O som é entendido no aparelho e nunca é gravado nem enviado.
-        NSSpeechRecognitionUsageDescription: O reconhecimento de fala entende o nome dito pelo jogador, no próprio aparelho. Nada é enviado pela internet.
+        NSMicrophoneUsageDescription: O microfone ouve o nome de cada jogador para a tia poder chamar cada um pelo nome. O som só é usado para entender o nome e não é gravado pelo app.
+        NSSpeechRecognitionUsageDescription: O reconhecimento de fala entende o nome dito pelo jogador. Quando possível é feito no próprio aparelho; senão, o som pode ser enviado à Apple apenas para reconhecer a fala. Nada é gravado pelo app.
         NSCameraUsageDescription: A câmera identifica quem está de pé ou agachado. As imagens são processadas no aparelho e nunca salvas ou enviadas.
         UILaunchScreen: {}
         UIApplicationSceneManifest:

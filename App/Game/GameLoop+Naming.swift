@@ -174,8 +174,6 @@ extension GameLoop {
             String(localized: "Sem permissão de reconhecimento de fala (Ajustes › Agacha).")
         case .microphonePermissionDenied:
             String(localized: "Sem permissão de microfone (Ajustes › Agacha).")
-        case .noOnDeviceRecognition:
-            String(localized: "Este iPad não tem o ditado em português para funcionar sem internet (Ajustes › Geral › Teclado › Ditado).")
         case .recognizerUnavailable:
             String(localized: "O reconhecimento de fala não está disponível agora.")
         case nil:
