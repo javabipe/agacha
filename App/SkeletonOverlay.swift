@@ -3,11 +3,9 @@ import AganhaVision
 import SwiftUI
 
 enum SlotPalette {
-    static let colors: [Color] = [.yellow, .mint, .orange, .purple, .cyan, .pink]
-
     static func color(for slot: ChildSlot?) -> Color {
         guard let slot else { return .gray }
-        return colors[slot % colors.count]
+        return Color(hex: SlotColors.hex(slot))
     }
 }
 

@@ -4,7 +4,7 @@ import SwiftUI
 struct AganhaApp: App {
     var body: some Scene {
         WindowGroup {
-            SpikeView()
+            RootView()
                 .preferredColorScheme(.dark)
         }
     }

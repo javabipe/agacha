@@ -128,3 +128,13 @@ public enum Verdict: String, Codable, Sendable, Equatable {
     /// Não foi vista (ou postura desconhecida) no fim da janela. Não elimina de imediato.
     case absent
 }
+
+/// Cor e nome de cada vaga (0...5). O nome é usado nos anúncios por voz ("Amarelo errou!").
+public enum SlotColors {
+    public static let names = ["amarelo", "verde", "laranja", "roxo", "azul", "rosa"]
+    public static let hexes = ["#FFC845", "#36C9A6", "#FF9F1C", "#8E7BFF", "#4D9DE0", "#FF7AB8"]
+
+    public static func name(_ slot: ChildSlot) -> String { names[slot % names.count] }
+    public static func hex(_ slot: ChildSlot) -> String { hexes[slot % hexes.count] }
+    public static func displayName(_ slot: ChildSlot) -> String { name(slot).prefix(1).uppercased() + name(slot).dropFirst() }
+}
