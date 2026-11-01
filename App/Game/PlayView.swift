@@ -1,5 +1,7 @@
 import AganhaCore
 import AganhaVision
+import AVFoundation
+import AVKit
 import SwiftUI
 
 /// Partida: tela virada para as crianças (palavra gigante, cor de fundo, tia, faixa de status).
@@ -83,28 +85,34 @@ struct PlayView: View {
         HStack(spacing: 8) {
             ForEach(loop.state.config?.slots ?? [], id: \.self) { slot in
                 SlotChip(slot: slot, name: loop.name(for: slot), isOut: loop.state.players[slot]?.isEliminated ?? false,
-                         detail: (loop.state.players[slot]?.isEliminated ?? false) ? "✕" : nil)
+                         detail: loop.statusDetail(for: slot))
             }
         }
     }
 }
 
-/// "Alguém errou!": replay em esqueleto, "Foi injusto!" e "Continuar" (segue sozinho depois de alguns segundos).
+/// "Alguém errou!": replay em esqueleto e em vídeo, "Foi injusto!" e "Continuar" (segue sozinho depois de alguns segundos).
 struct EliminatedView: View {
     let loop: GameLoop
     let info: ResultInfo
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.78).ignoresSafeArea()
+            Color.black.opacity(0.82).ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 20) {
                     Text(info.result.isTie ? "Todos erraram juntos!" : "Alguém errou!")
                         .font(.system(size: 48, weight: .black, design: .rounded))
                         .foregroundStyle(Color.aganhaYellow)
-                    ForEach(info.result.eliminated, id: \.self) { slot in
+                    if let asset = loop.replayAsset {
+                        ReplayVideoView(asset: asset)
+                            .aspectRatio(16 / 9, contentMode: .fit)
+                            .frame(maxWidth: 560)
+                            .clipShape(.rect(cornerRadius: 16))
+                    }
+                    ForEach(info.result.wrong, id: \.self) { slot in
                         VStack(spacing: 8) {
-                            SlotChip(slot: slot, name: loop.name(for: slot))
+                            SlotChip(slot: slot, name: loop.name(for: slot), detail: loop.statusDetail(for: slot))
                             HStack(spacing: 8) {
                                 ForEach(Array((info.replays[slot] ?? []).enumerated()), id: \.offset) { _, skeleton in
                                     SkeletonThumbnail(skeleton: skeleton, color: SlotPalette.color(for: slot))
@@ -148,5 +156,27 @@ struct EliminatedView: View {
             }
         }
         .frame(maxWidth: 520)
+    }
+}
+
+/// Vídeo curto da rodada (sem som, repetindo). Existe só até o replay terminar.
+private struct ReplayVideoView: View {
+    let asset: AVAsset
+    @State private var player = AVQueuePlayer()
+    @State private var looper: AVPlayerLooper?
+
+    var body: some View {
+        VideoPlayer(player: player)
+            .onAppear {
+                player.isMuted = true
+                looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(asset: asset))
+                player.play()
+            }
+            .onDisappear {
+                player.pause()
+                looper?.disableLooping()
+                looper = nil
+            }
+            .accessibilityLabel("Replay da rodada em vídeo")
     }
 }

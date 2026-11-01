@@ -8,7 +8,7 @@ extension GameLoop {
             await audio.speak(String(localized: "Todos erraram juntos!"))
             return
         }
-        for slot in result.eliminated {
+        for slot in result.wrong {
             await audio.speak("\(name(for: slot)) errou!")
             if Task.isCancelled { return }
         }
@@ -29,6 +29,17 @@ extension GameLoop {
                 guard !Task.isCancelled else { return }
                 await audio.play("fb_fim_de_jogo", fallbackText: "Fim de jogo!")
             }
+            guard !Task.isCancelled else { return }
+            startGameOverControls()
         }
+    }
+
+    /// ✕ para quem saiu; corações restantes quando a partida permite mais de um erro.
+    func statusDetail(for slot: ChildSlot) -> String? {
+        guard let player = state.players[slot] else { return nil }
+        if player.isEliminated { return "✕" }
+        let limit = state.config?.maxErrors ?? 1
+        guard limit > 1 else { return nil }
+        return String(repeating: "♥", count: max(0, limit - player.errors)) + String(repeating: "♡", count: player.errors)
     }
 }

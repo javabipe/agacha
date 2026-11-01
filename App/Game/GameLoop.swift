@@ -1,6 +1,7 @@
 import AganhaAudio
 import AganhaCore
 import AganhaVision
+import AVFoundation
 import CoreMedia
 import Observation
 import os
@@ -18,6 +19,8 @@ final class GameLoop {
     static let recentNamesKey = "recentNames"
 
     static let continueDelay = 5.0
+    /// Com o vídeo do replay, mais tempo para assistir antes de seguir sozinho.
+    static let continueDelayWithVideo = 10.0
     /// Espera depois do fim da janela para as últimas amostras da câmera (latência do Vision) chegarem.
     static let processingDelay = 0.12
     static let handsUpHold = 0.8
@@ -25,13 +28,17 @@ final class GameLoop {
     var settings = GameSettings()
     private(set) var stage: Stage = .idle
     private(set) var state = GameState()
-    private(set) var analysis: FrameAnalysis?
-    private(set) var report = PositioningReport.empty
-    private(set) var guidance: Guidance?
-    private(set) var cameraError: String?
+    var analysis: FrameAnalysis?
+    var report = PositioningReport.empty
+    var guidance: Guidance?
+    var cameraError: String?
     private(set) var countdownText: String?
     private(set) var shownCommand: Command?
     private(set) var resultInfo: ResultInfo?
+    /// Vídeo temporário da última rodada com erro (apagado ao seguir em frente).
+    var replayAsset: AVAsset?
+    /// Fim de partida: pediram para voltar ao menu (por voz).
+    var wantsMenu = false
     var step: PositioningStep = .framing
     var names: [ChildSlot: String] = [:]
     var namingSlot: ChildSlot?
@@ -44,25 +51,29 @@ final class GameLoop {
     var recentNames = UserDefaults.standard.stringArray(forKey: GameLoop.recentNamesKey) ?? []
 
     let camera = CameraSession()
-    private let pipeline = PosePipeline()
+    let pipeline = PosePipeline()
+    let recorder = ClipRecorder()
     let audio = AudioPlayer()
     let listener = NameListener()
-    private var replay = ReplayBuffer()
+    var replay = ReplayBuffer()
     let logger = Logger(subsystem: "br.com.agacha.app", category: "gameloop")
 
-    private var cameraRunning = false
+    var cameraRunning = false
     var gameTask: Task<Void, Never>?
+    var gameOverTask: Task<Void, Never>?
+    var playAgainSince: Double?
+    var replayTask: Task<Void, Never>?
     private var closeTask: Task<Void, Never>?
     private var resultTask: Task<Void, Never>?
     var promptTask: Task<Void, Never>?
     var namingTask: Task<Void, Never>?
     var readySince: Double?
 
-    private var candidate: Guidance?
-    private var candidateSince = 0.0
-    private var spoken: Guidance?
-    private var lastSpokenAt = 0.0
-    private var handsUpSince: Double?
+    var candidate: Guidance?
+    var candidateSince = 0.0
+    var spoken: Guidance?
+    var lastSpokenAt = 0.0
+    var handsUpSince: Double?
 
     nonisolated static func now() -> Double {
         CMClockGetTime(CMClockGetHostTimeClock()).seconds
@@ -96,6 +107,7 @@ final class GameLoop {
     /// Sai para o menu: para tudo e desliga a câmera.
     func leave() {
         cancelGame()
+        wantsMenu = false
         send(.quit)
         stage = .idle
         stopCamera()
@@ -114,7 +126,9 @@ final class GameLoop {
         pipeline.requestRecalibration()
         stage = .playing
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
-                                commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max))
+                                commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
+                                maxErrors: settings.maxErrors)
+        if settings.recordReplay { recorder.start() }
         send(.start(config))
     }
 
@@ -138,118 +152,13 @@ final class GameLoop {
         }
     }
 
-    // MARK: - Câmera
-
-    private func startCamera() async {
-        guard !cameraRunning else { return }
-        let pipeline = pipeline
-        let loop = self
-        camera.onFrame = { buffer, timestamp in
-            let analysis = pipeline.process(pixelBuffer: buffer, timestamp: timestamp)
-            Task { @MainActor in loop.ingest(analysis) }
-        }
-        _ = camera.setCenterStage(enabled: false)
-        do {
-            _ = try await camera.start()
-            camera.updateRotationCoordinator()
-            cameraRunning = true
-            cameraError = nil
-        } catch CameraError.denied {
-            cameraError = String(localized: "Permita o acesso à câmera em Ajustes para jogar.")
-        } catch {
-            cameraError = String(localized: "Não foi possível iniciar a câmera.")
-            logger.error("Câmera falhou: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-
-    private func stopCamera() {
-        camera.stop()
-        cameraRunning = false
-    }
-
-    private func ingest(_ analysis: FrameAnalysis) {
-        self.analysis = analysis
-        switch stage {
-        case .idle:
-            break
-        case .positioning:
-            report = PositioningCheck.evaluate(analysis)
-            if step == .framing {
-                updateGuidance(report)
-                advanceToNames(report, at: analysis.timestamp)
-            }
-            checkRaisedArms(report, at: analysis.timestamp)
-        case .playing:
-            replay.append(analysis)
-            guard case .window = state.phase else { return }
-            let samples = analysis.people.compactMap { person -> PostureSample? in
-                guard let slot = person.slot else { return nil }
-                return PostureSample(childSlot: slot, posture: person.reading.posture, timestamp: analysis.timestamp,
-                                     crouchIndex: person.reading.crouchIndex)
-            }
-            send(.postureSamples(samples))
-        }
-    }
-
-    // MARK: - Posicionar
-
-    private func checkRaisedArms(_ report: PositioningReport, at time: Double) {
-        let canStart = step == .ready || (!settings.askNames && step == .framing)
-        guard canStart, report.allReady, report.anyRaisingBothArms else {
-            handsUpSince = nil
-            return
-        }
-        let since = handsUpSince ?? time
-        handsUpSince = since
-        if time - since >= Self.handsUpHold { startGame() }
-    }
-
-    private func guidance(for report: PositioningReport) -> Guidance {
-        func make(_ clip: String, _ text: String.LocalizationValue, slot: ChildSlot? = nil) -> Guidance {
-            Guidance(clip: clip, text: String(localized: text), slot: slot)
-        }
-        if report.people.isEmpty {
-            return make("setup_afastem", "Afastem-se até eu ver todo mundo, da cabeça aos pés.")
-        }
-        if let problem = report.firstProblem, let issue = problem.issue {
-            switch issue {
-            case .noHead: return make("setup_sem_cabeca", "Não estou vendo a cabeça de alguém.", slot: problem.slot)
-            case .noFeet: return make("setup_sem_pes", "Não estou vendo os pés de alguém.", slot: problem.slot)
-            case .cutOff: return make("setup_cortado", "Tem alguém cortado na imagem.", slot: problem.slot)
-            }
-        }
-        if report.people.count < report.minPlayers {
-            return make("setup_pouca_gente", "Preciso de pelo menos duas pessoas para brincar.")
-        }
-        if settings.askNames { return make("setup_pronto", "Pronto! Já vi todo mundo!") }
-        return make("setup_comecar_bracos", "Prontos! Levantem os dois braços para começar.")
-    }
-
-    /// Só fala quando a orientação fica estável por um instante e não repete a mesma a cada quadro.
-    private func updateGuidance(_ report: PositioningReport) {
-        let next = guidance(for: report)
-        let time = Self.now()
-        if next != candidate {
-            candidate = next
-            candidateSince = time
-        }
-        let stable = time - candidateSince
-        if stable > 0.8, next != guidance { guidance = next }
-        guard stable > 1.2, !audio.isPlaying, next != spoken || time - lastSpokenAt > 12 else { return }
-        spoken = next
-        lastSpokenAt = time
-        promptTask = Task {
-            await audio.play(next.clip, fallbackText: next.text)
-            lastSpokenAt = Self.now()
-        }
-    }
-
     // MARK: - Partida
 
-    private func send(_ action: GameAction) {
+    func send(_ action: GameAction) {
         switch action {
         case .next, .unfair, .quit:
             resultInfo = nil
+            releaseReplay()
         default:
             break
         }
@@ -262,7 +171,9 @@ final class GameLoop {
         case let .playCommand(command): playCommand(command)
         case let .scheduleWindowClose(time): scheduleClose(at: time)
         case let .showResult(result): showResult(result)
-        case let .finished(result): celebrate(result)
+        case let .finished(result):
+            recorder.stop()
+            celebrate(result)
         }
     }
 
@@ -326,12 +237,16 @@ final class GameLoop {
 
     private func showResult(_ result: RoundResult) {
         shownCommand = nil
-        let hasDrama = !result.eliminated.isEmpty || result.isTie
-        let delay = hasDrama ? Self.continueDelay : Double(result.command.gapMs) / 1000
+        let hasDrama = !result.wrong.isEmpty || result.isTie
+        let withVideo = hasDrama && settings.recordReplay
+        let delay = hasDrama ? (withVideo ? Self.continueDelayWithVideo : Self.continueDelay) : Double(result.command.gapMs) / 1000
         if hasDrama {
-            let replays = Dictionary(uniqueKeysWithValues: result.eliminated.map { ($0, replay.snapshots(for: $0, count: 3)) })
+            let replays = Dictionary(uniqueKeysWithValues: result.wrong.map { ($0, replay.snapshots(for: $0, count: 3)) })
             resultInfo = ResultInfo(result: result, replays: replays, continueAt: Self.now() + delay, duration: delay,
                                     isManual: result.finished == nil || !result.eliminated.isEmpty)
+        }
+        if withVideo {
+            replayTask = Task { replayAsset = await recorder.capture(seconds: 4) }
         }
         let deadline = Self.now() + delay
         resultTask = Task {
@@ -343,8 +258,19 @@ final class GameLoop {
         }
     }
 
+    /// Fim do replay: descarta o vídeo temporário e volta a gravar.
+    private func releaseReplay() {
+        replayTask?.cancel()
+        replayAsset = nil
+        recorder.resume()
+    }
+
     private func cancelGame() {
         gameTask?.cancel()
+        gameOverTask?.cancel()
+        replayTask?.cancel()
+        replayAsset = nil
+        recorder.stop()
         closeTask?.cancel()
         resultTask?.cancel()
         promptTask?.cancel()

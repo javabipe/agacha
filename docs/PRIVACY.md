@@ -12,3 +12,10 @@
 - Quando o aparelho tem o idioma disponível offline, o reconhecimento roda **no aparelho**. Caso contrário, o iOS pode enviar o áudio **à Apple** para reconhecer a fala (decisão do Paulo em 2026-11-02, para funcionar com internet). O app em si não grava o áudio nem usa servidores próprios.
 - O texto do nome fica guardado só no aparelho (últimos nomes usados) e pode ser apagado.
 - **Pendente antes da App Store:** com o envio de áudio à Apple, a Label de Privacidade "Data Not Collected" e a categoria Kids (faixa 6–8, Diretriz 1.3) precisam ser reavaliadas, possivelmente exigindo parental gate ou desligar a voz por padrão. Alternativa: usar só reconhecimento offline.
+
+## Replay em vídeo do erro (temporário)
+
+- Durante a partida (e só se a opção estiver ligada no menu), o app grava em **arquivos temporários** os últimos segundos da câmera, para mostrar o replay em vídeo quando alguém erra.
+- Os arquivos ficam na pasta temporária do app (protegida), sem som, **nunca são enviados**, e são **apagados** quando o replay termina, ao sair da partida, ao fim do jogo e na próxima abertura do app.
+- A gravação é desligada fora da partida (nunca grava no menu nem no posicionamento).
+- A imagem continua sem sair do aparelho. Isso muda a regra anterior ("nenhuma imagem em disco"): agora há vídeo temporário, que precisa constar na política de privacidade.

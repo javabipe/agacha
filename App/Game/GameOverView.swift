@@ -4,6 +4,9 @@ import SwiftUI
 struct GameOverView: View {
     let result: GameResult
     let name: (ChildSlot) -> String
+    /// O app está ouvindo "de novo" / "menu".
+    var isListening = false
+    var heard = ""
     let onPlayAgain: () -> Void
     let onMenu: () -> Void
 
@@ -32,6 +35,15 @@ struct GameOverView: View {
                             .foregroundStyle(Color.aganhaCream)
                         }
                     }
+                    VStack(spacing: 6) {
+                        Label(isListening ? (heard.isEmpty ? "Ouvindo…" : heard) : "Comandos de voz desligados",
+                              systemImage: isListening ? "mic.fill" : "mic.slash")
+                            .font(.headline)
+                        Text("Diga \"de novo\" ou levante os dois braços para jogar outra vez. Diga \"menu\" para sair.")
+                            .font(.callout)
+                            .multilineTextAlignment(.center)
+                    }
+                    .foregroundStyle(Color.aganhaCream.opacity(0.85))
                     HStack(spacing: 12) {
                         Button("Menu", action: onMenu).buttonStyle(.bordered)
                         Button(action: onPlayAgain) {

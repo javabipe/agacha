@@ -25,7 +25,13 @@ struct MenuView: View {
                         picker("Nível", selection: $loop.settings.difficulty, options: Difficulty.allCases, label: Self.name)
                         picker("Tempo para reagir", selection: $loop.settings.tolerance, options: Tolerance.allCases, label: Self.name)
                         picker("Comandos", selection: $loop.settings.commandSet, options: [.classic, .school], label: Self.name)
+                        picker("Erros permitidos por jogador", selection: $loop.settings.maxErrors, options: [1, 2, 3, 5]) {
+                            $0 == 1 ? String(localized: "1 (sai no primeiro)") : "\($0)"
+                        }
                         Toggle("Perguntar o nome de cada jogador", isOn: $loop.settings.askNames)
+                            .font(.headline)
+                            .foregroundStyle(Color.aganhaCream)
+                        Toggle("Replay em vídeo do erro (apagado em seguida)", isOn: $loop.settings.recordReplay)
                             .font(.headline)
                             .foregroundStyle(Color.aganhaCream)
                     }

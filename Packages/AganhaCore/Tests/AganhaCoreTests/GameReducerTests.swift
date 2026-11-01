@@ -220,3 +220,76 @@ import Testing
         #expect(a.phase == b.phase)
     }
 }
+
+@Suite struct LivesTests {
+    private func started(maxErrors: Int, slots: [ChildSlot] = [0, 1, 2]) -> GameState {
+        var state = GameState()
+        GameReducer.reduce(&state, .start(GameConfig(slots: slots, seed: 1, maxErrors: maxErrors)))
+        GameReducer.reduce(&state, .countdownFinished)
+        return state
+    }
+
+    private func round(_ state: inout GameState, wrong: Set<ChildSlot>) {
+        guard case let .announcing(command) = state.phase else { Issue.record("fase \(state.phase)"); return }
+        GameReducer.reduce(&state, .commandAudioStarted(at: 1))
+        guard case let .window(_, _, closes) = state.phase else { return }
+        let samples = state.survivors.map { slot in
+            PostureSample(childSlot: slot, posture: wrong.contains(slot) ? command.word.opposite.posture : command.word.posture,
+                          timestamp: closes - 0.05)
+        }
+        GameReducer.reduce(&state, .postureSamples(samples))
+        GameReducer.reduce(&state, .windowClosed)
+    }
+
+    @Test func playerSurvivesUntilReachingTheErrorLimit() {
+        var state = started(maxErrors: 3)
+        for expected in 1...2 {
+            round(&state, wrong: [1])
+            guard case let .result(result) = state.phase else { Issue.record("fase"); return }
+            #expect(result.wrong == [1])
+            #expect(result.eliminated.isEmpty)
+            #expect(state.players[1]?.errors == expected)
+            GameReducer.reduce(&state, .next)
+        }
+        round(&state, wrong: [1])
+        guard case let .result(result) = state.phase else { Issue.record("fase"); return }
+        #expect(result.eliminated == [1])
+        #expect(state.survivors == [0, 2])
+    }
+
+    @Test func defaultStaysOneError() {
+        var state = started(maxErrors: 1)
+        round(&state, wrong: [0])
+        #expect(state.survivors == [1, 2])
+    }
+
+    @Test func everyoneErringWithLivesLeftKeepsPlaying() {
+        var state = started(maxErrors: 2, slots: [0, 1])
+        round(&state, wrong: [0, 1])
+        guard case let .result(result) = state.phase else { Issue.record("fase"); return }
+        #expect(!result.isTie)
+        #expect(result.finished == nil)
+        #expect(state.survivors == [0, 1])
+    }
+
+    @Test func everyoneEliminatedAtTheSameTimeIsATie() {
+        var state = started(maxErrors: 2, slots: [0, 1])
+        round(&state, wrong: [0, 1]); GameReducer.reduce(&state, .next)
+        round(&state, wrong: [0, 1])
+        guard case let .result(result) = state.phase else { Issue.record("fase"); return }
+        #expect(result.isTie)
+        #expect(result.finished?.winners == [0, 1])
+    }
+
+    @Test func unfairGivesTheErrorBack() {
+        var state = started(maxErrors: 3)
+        round(&state, wrong: [1])
+        #expect(state.players[1]?.errors == 1)
+        GameReducer.reduce(&state, .unfair)
+        #expect(state.players[1]?.errors == 0)
+    }
+
+    @Test func invalidLimitIsClampedToOne() {
+        #expect(GameConfig(slots: [0, 1], seed: 1, maxErrors: 0).maxErrors == 1)
+    }
+}

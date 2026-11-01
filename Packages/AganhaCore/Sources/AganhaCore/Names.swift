@@ -40,3 +40,41 @@ public enum RecentNames {
         return Array(([name] + rest).prefix(limit))
     }
 }
+
+/// O que a pessoa quer fazer no fim da partida, a partir do que disse.
+public enum VoiceIntent: Sendable, Equatable {
+    case playAgain
+    case menu
+
+    private static let menuPhrases = [
+        "menu", "sair", "chega", "parar", "para", "terminar", "acabou", "nao", "nao quero", "cansei", "encerrar"
+    ]
+    private static let againPhrases = [
+        "de novo", "novamente", "outra vez", "mais uma", "mais um", "jogar", "continuar", "continua", "vamos",
+        "sim", "bora", "quero", "repetir", "revanche"
+    ]
+
+    /// Reconhece frases como "de novo!", "vamos jogar", "não quero mais" (nada → nil).
+    /// "Não" e "sair" têm prioridade: "não quero jogar de novo" é menu.
+    public static func parse(_ transcript: String) -> VoiceIntent? {
+        let text = " " + words(transcript).joined(separator: " ") + " "
+        if menuPhrases.contains(where: { text.contains(" \($0) ") }) { return .menu }
+        if againPhrases.contains(where: { text.contains(" \($0) ") }) { return .playAgain }
+        return nil
+    }
+
+    private static func words(_ text: String) -> [String] {
+        let folded = text.lowercased().map { character -> Character in
+            switch character {
+            case "á", "à", "â", "ã", "ä": "a"
+            case "é", "è", "ê", "ë": "e"
+            case "í", "ì", "î", "ï": "i"
+            case "ó", "ò", "ô", "õ", "ö": "o"
+            case "ú", "ù", "û", "ü": "u"
+            case "ç": "c"
+            default: character
+            }
+        }
+        return String(folded.map { $0.isLetter ? $0 : " " }).split(separator: " ").map(String.init)
+    }
+}

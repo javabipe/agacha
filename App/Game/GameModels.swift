@@ -6,6 +6,10 @@ struct GameSettings: Equatable {
     var tolerance: Tolerance = .normal
     var commandSet: CommandSet = .classic
     var askNames = true
+    /// Erros que cada jogador pode cometer antes de sair.
+    var maxErrors = 1
+    /// Replay em vídeo da rodada (gravado só por alguns segundos e apagado em seguida).
+    var recordReplay = true
 }
 
 /// Orientação falada e escrita na tela Posicionar.

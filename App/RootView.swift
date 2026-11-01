@@ -7,6 +7,13 @@ struct RootView: View {
     @State private var route = Route.menu
 
     var body: some View {
+        content
+            .onChange(of: loop.wantsMenu) { _, wants in
+                if wants { leave() }
+            }
+    }
+
+    @ViewBuilder private var content: some View {
         switch route {
         case .menu:
             MenuView(loop: loop, onPlay: {
@@ -30,7 +37,8 @@ struct RootView: View {
     @ViewBuilder private var gameFlow: some View {
         switch (loop.stage, loop.state.phase) {
         case (.playing, .gameOver(let result)):
-            GameOverView(result: result, name: loop.name(for:), onPlayAgain: { loop.startPositioning(keepSlots: true) }, onMenu: leave)
+            GameOverView(result: result, name: loop.name(for:), isListening: loop.isListening, heard: loop.heardText,
+                         onPlayAgain: { loop.startPositioning(keepSlots: true) }, onMenu: leave)
         case (.playing, _):
             PlayView(loop: loop, onQuit: leave)
         default:

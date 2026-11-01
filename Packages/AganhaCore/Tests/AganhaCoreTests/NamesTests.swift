@@ -35,3 +35,23 @@ import Testing
         #expect(RecentNames.adding("Novo", to: many, limit: 12).count == 12)
     }
 }
+
+@Suite struct VoiceIntentTests {
+    @Test func againPhrases() {
+        for phrase in ["de novo!", "De novo", "vamos jogar", "outra vez", "sim", "mais uma", "bora", "continuar"] {
+            #expect(VoiceIntent.parse(phrase) == .playAgain, "\(phrase)")
+        }
+    }
+
+    @Test func menuPhrasesWinOverAgain() {
+        for phrase in ["menu", "sair", "chega", "não", "não quero jogar de novo", "acabou", "para"] {
+            #expect(VoiceIntent.parse(phrase) == .menu, "\(phrase)")
+        }
+    }
+
+    @Test func unrelatedOrEmptyIsNil() {
+        for phrase in ["", "o gato subiu no telhado", "assim"] {
+            #expect(VoiceIntent.parse(phrase) == nil, "\(phrase)")
+        }
+    }
+}
