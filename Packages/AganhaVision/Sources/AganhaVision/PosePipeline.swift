@@ -10,16 +10,12 @@ public struct TrackedPerson: Sendable, Identifiable {
     public let skeleton: Skeleton
     public let reading: PostureReading
     public let id: Int
-    /// Cor da roupa (só quando `computeAppearance` está ligado).
-    public let appearance: AppearanceSignature?
 
-    public init(id: Int, slot: ChildSlot?, skeleton: Skeleton, reading: PostureReading,
-                appearance: AppearanceSignature? = nil) {
+    public init(id: Int, slot: ChildSlot?, skeleton: Skeleton, reading: PostureReading) {
         self.id = id
         self.slot = slot
         self.skeleton = skeleton
         self.reading = reading
-        self.appearance = appearance
     }
 }
 
@@ -33,12 +29,9 @@ public struct FrameAnalysis: Sendable {
     public let latencyMs: Double
     /// Quadros processados por segundo (janela de 1 s).
     public let fps: Double
-    /// Rosto visto (só no modo `.faces`).
-    public let face: FaceScan?
 
     public init(timestamp: TimeInterval, imageSize: CGSize, people: [TrackedPerson],
-                detectionMs: Double, latencyMs: Double, fps: Double, face: FaceScan? = nil) {
-        self.face = face
+                detectionMs: Double, latencyMs: Double, fps: Double) {
         self.timestamp = timestamp
         self.imageSize = imageSize
         self.people = people
@@ -61,33 +54,12 @@ public final class PosePipeline: @unchecked Sendable {
     private var _tuning = PostureTuning.normal
     private var _resetRequested = false
     private var _recalibrateRequested = false
-    private var _mode = Mode.pose
-    private var _computeAppearance = false
-    private let faceScanner = FaceScanner()
-
-    public enum Mode: Sendable {
-        /// Esqueletos, vagas e posturas (jogo).
-        case pose
-        /// Só o rosto maior do quadro (apresentação dos jogadores).
-        case faces
-    }
 
     public init() {}
 
     public var tuning: PostureTuning {
         get { lock.withLock { _tuning } }
         set { lock.withLock { _tuning = newValue } }
-    }
-
-    public var mode: Mode {
-        get { lock.withLock { _mode } }
-        set { lock.withLock { _mode = newValue } }
-    }
-
-    /// Calcula a cor da roupa de cada pessoa (para ligar vagas a jogadores já apresentados).
-    public var computeAppearance: Bool {
-        get { lock.withLock { _computeAppearance } }
-        set { lock.withLock { _computeAppearance = newValue } }
     }
 
     /// Zera vagas e calibrações no próximo quadro.
@@ -103,15 +75,6 @@ public final class PosePipeline: @unchecked Sendable {
     /// Caminho da câmera.
     public func process(pixelBuffer: CVPixelBuffer, timestamp: TimeInterval) -> FrameAnalysis {
         let start = DispatchTime.now().uptimeNanoseconds
-        if lock.withLock({ _mode }) == .faces {
-            let face = faceScanner.scan(pixelBuffer)
-            let elapsed = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
-            let size = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
-            processedTimes.append(timestamp)
-            processedTimes.removeAll { timestamp - $0 > 1 }
-            return FrameAnalysis(timestamp: timestamp, imageSize: size, people: [], detectionMs: elapsed,
-                                 latencyMs: elapsed, fps: Double(processedTimes.count), face: face)
-        }
         let skeletons: [Skeleton]
         do {
             skeletons = try detector.detect(in: pixelBuffer)
@@ -122,14 +85,14 @@ public final class PosePipeline: @unchecked Sendable {
         let detectionMs = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
         let size = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
         return analyze(skeletons: skeletons, timestamp: timestamp, imageSize: size,
-                       detectionMs: detectionMs, startedAt: start, pixelBuffer: pixelBuffer)
+                       detectionMs: detectionMs, startedAt: start)
     }
 
     /// Caminho dos testes/fixtures: esqueletos já detectados.
     public func analyze(skeletons: [Skeleton], timestamp: TimeInterval, imageSize: CGSize,
-                        detectionMs: Double = 0, startedAt: UInt64? = nil, pixelBuffer: CVPixelBuffer? = nil) -> FrameAnalysis {
-        let (tuning, shouldReset, shouldRecalibrate, wantAppearance) = lock.withLock {
-            let state = (_tuning, _resetRequested, _recalibrateRequested, _computeAppearance)
+                        detectionMs: Double = 0, startedAt: UInt64? = nil) -> FrameAnalysis {
+        let (tuning, shouldReset, shouldRecalibrate) = lock.withLock {
+            let state = (_tuning, _resetRequested, _recalibrateRequested)
             _resetRequested = false
             _recalibrateRequested = false
             return state
@@ -146,8 +109,7 @@ public final class PosePipeline: @unchecked Sendable {
                 var classifier = classifiers[slot] ?? PostureClassifier()
                 let reading = classifier.update(skeleton: skeleton, at: timestamp, tuning: tuning)
                 classifiers[slot] = classifier
-                people.append(TrackedPerson(id: slot, slot: slot, skeleton: skeleton, reading: reading,
-                                            appearance: appearance(of: skeleton, in: pixelBuffer, wanted: wantAppearance, size: imageSize)))
+                people.append(TrackedPerson(id: slot, slot: slot, skeleton: skeleton, reading: reading))
             } else {
                 let reading = PostureReading(posture: .unknown, crouchIndex: nil, isCalibrated: false)
                 people.append(TrackedPerson(id: 100 + index, slot: nil, skeleton: skeleton, reading: reading))
@@ -165,10 +127,5 @@ public final class PosePipeline: @unchecked Sendable {
 
         return FrameAnalysis(timestamp: timestamp, imageSize: imageSize, people: people,
                              detectionMs: detectionMs, latencyMs: latency, fps: fps)
-    }
-
-    private func appearance(of skeleton: Skeleton, in buffer: CVPixelBuffer?, wanted: Bool, size: CGSize) -> AppearanceSignature? {
-        guard wanted, let buffer, let rect = AppearanceSignature.torsoRect(of: skeleton, imageSize: size) else { return nil }
-        return AppearanceSignature.extract(from: buffer, rect: rect)
     }
 }

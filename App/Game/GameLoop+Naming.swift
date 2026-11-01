@@ -3,24 +3,15 @@ import AganhaCore
 import AganhaVision
 import Foundation
 
-/// Nomes dos jogadores: texto da tela, escolha por voz (ou digitada) e vagas sem jogador apresentado.
+/// Perguntar e guardar o nome de cada jogador (reconhecimento de fala só no aparelho).
 extension GameLoop {
-    // MARK: - Texto do topo da tela Posicionar
+    // MARK: - Nomes
 
+    func name(for slot: ChildSlot) -> String { names[slot] ?? SlotColors.displayName(slot) }
+
+    /// Texto grande do topo da tela Posicionar, conforme o momento.
     var bannerText: String {
         switch step {
-        case .meeting:
-            var text = meetingPrompt.isEmpty ? String(localized: "Vamos conhecer vocês!") : meetingPrompt
-            if isListening {
-                text += "\n🎤 " + (heardText.isEmpty ? String(localized: "Ouvindo…") : heardText)
-            } else if let faceHint {
-                text += "\n" + faceHint
-            }
-            return text
-        case .placing:
-            return String(localized: "Agora coloque o aparelho em pé, encostado no chão e apoiado na parede.")
-        case .identifying:
-            return String(localized: "Reconhecendo cada um…")
         case .framing:
             return guidance?.text ?? String(localized: "Procurando vocês…")
         case .naming:
@@ -28,6 +19,9 @@ extension GameLoop {
             let question = String(localized: "\(SlotColors.displayName(slot)), qual é o seu nome?")
             if isListening { return question + "\n🎤 " + (heardText.isEmpty ? String(localized: "Ouvindo…") : heardText) }
             return question
+        case .typing:
+            let who = typingSlot.map { SlotColors.displayName($0) } ?? ""
+            return (namingNotice.map { $0 + "\n" } ?? "") + String(localized: "Digite o nome de \(who).")
         case .ready:
             return namingNotice ?? String(localized: "Levantem os dois braços para começar!")
         }
@@ -36,128 +30,106 @@ extension GameLoop {
     var bannerSlot: ChildSlot? {
         switch step {
         case .naming: namingSlot
-        case .framing: guidance?.slot
-        default: nil
+        case .typing: typingSlot
+        default: guidance?.slot
         }
     }
-
-    func name(for slot: ChildSlot) -> String { names[slot] ?? SlotColors.displayName(slot) }
-
-    // MARK: - Nomes
 
     /// Define (ou corrige) o nome de uma vaga e lembra dele para as próximas partidas.
     func setName(_ raw: String, for slot: ChildSlot) {
         guard let clean = NameParser.clean(raw) else { return }
         names[slot] = clean
-        remember(clean)
-        if let id = slotPlayers[slot] { profileStore.rename(id, to: clean) }
-    }
-
-    func remember(_ name: String) {
-        recentNames = RecentNames.adding(name, to: recentNames)
+        recentNames = RecentNames.adding(clean, to: recentNames)
         UserDefaults.standard.set(recentNames, forKey: Self.recentNamesKey)
     }
 
-    /// Atalho: usa um nome já conhecido para quem está sendo perguntado, sem precisar falar.
+    /// Atalho: usa um nome já conhecido para quem está sendo perguntado, sem falar.
     func useRecentName(_ name: String) {
-        guard awaitingName else { return }
-        quickName = name
-        listenTask?.cancel()
+        guard step == .naming, let slot = namingSlot else { return }
+        namingTask?.cancel()
         audio.stop()
-        resolveTyping(name)
+        setName(name, for: slot)
+        resumeNaming()
     }
 
     func skipNaming() {
-        guard step == .naming else { return }
+        guard step == .naming || step == .typing else { return }
         namingTask?.cancel()
-        listenTask?.cancel()
-        resolveTyping(nil)
         audio.stop()
-        awaitingName = false
+        typingQueue = []
+        typingSlot = nil
         finishNaming()
     }
 
-    // MARK: - Vagas sem jogador apresentado
+    /// Nome digitado por um adulto quando a voz não está disponível.
+    func submitTyped(_ raw: String) {
+        if let slot = typingSlot { setName(raw, for: slot) }
+        advanceTyping()
+    }
 
-    func advanceWhenReady(_ report: PositioningReport, at time: Double) {
+    func skipTyping() {
+        advanceTyping()
+    }
+
+    private func startTyping(_ slots: [ChildSlot]) {
+        typingQueue = slots
+        step = .typing
+        advanceTyping(dropCurrent: false)
+    }
+
+    private func advanceTyping(dropCurrent: Bool = true) {
+        if dropCurrent, !typingQueue.isEmpty { typingQueue.removeFirst() }
+        namingSlot = nil
+        if let next = typingQueue.first {
+            typingSlot = next
+        } else {
+            typingSlot = nil
+            finishNaming()
+        }
+    }
+
+    func advanceToNames(_ report: PositioningReport, at time: Double) {
         guard settings.askNames, report.allReady else {
             readySince = nil
             return
         }
         let since = readySince ?? time
         readySince = since
-        guard time - since >= 2.0 else { return }
-        if met.isEmpty { beginNaming() } else { beginIdentifying() }
+        if time - since >= 2.0 { beginNaming() }
     }
 
-    func collectAppearance(_ analysis: FrameAnalysis) {
-        for person in analysis.people {
-            guard let slot = person.slot, let signature = person.appearance else { continue }
-            slotSignatures[slot, default: []].append(signature)
-        }
-    }
-
-    /// Liga cada vaga ao jogador apresentado pela cor da roupa; quem sobrar é perguntado pelo nome.
-    private func beginIdentifying() {
-        guard step == .framing else { return }
-        step = .identifying
-        slotSignatures = [:]
-        promptTask?.cancel()
-        audio.stop()
-        namingTask = Task {
-            try? await Task.sleep(for: .seconds(1.5))
-            guard !Task.isCancelled else { return }
-            let seen = slotSignatures.compactMapValues { AppearanceSignature.average($0) }
-            let players = Dictionary(uniqueKeysWithValues: met.compactMap { player in
-                player.clothing.map { (player.id.uuidString, $0) }
-            })
-            for (slot, id) in AppearanceMatcher.assign(slots: seen, players: players) {
-                guard let player = met.first(where: { $0.id.uuidString == id }) else { continue }
-                names[slot] = player.name
-                slotPlayers[slot] = player.id
-            }
-            let pending = report.people.map(\.slot).filter { names[$0] == nil }
-            if pending.isEmpty {
-                let who = report.people.map { name(for: $0.slot) }
-                await audio.speak("Prontos, \(Self.joined(who))!")
-                guard !Task.isCancelled else { return }
-                finishNaming()
-            } else {
-                step = .naming
-                await runNaming(pending)
-            }
-        }
-    }
-
-    func beginNaming() {
+    private func beginNaming() {
         guard step == .framing else { return }
         step = .naming
         promptTask?.cancel()
         audio.stop()
         namingNotice = nil
         let pending = report.people.map(\.slot).filter { names[$0] == nil }
-        namingTask = Task { await runNaming(pending) }
+        namingTask = Task { await runNaming(pending, introduce: true) }
     }
 
-    private func runNaming(_ slots: [ChildSlot]) async {
-        for slot in slots {
+    private func resumeNaming() {
+        let pending = report.people.map(\.slot).filter { names[$0] == nil }
+        namingTask = Task { await runNaming(pending, introduce: false) }
+    }
+
+    private func runNaming(_ slots: [ChildSlot], introduce: Bool) async {
+        if introduce, !slots.isEmpty {
+            await audio.play("names_intro", fallbackText: "Vou conhecer vocês! Quando eu chamar, digam o seu nome.")
+        }
+        for (index, slot) in slots.enumerated() {
             guard !Task.isCancelled else { return }
-            namingSlot = slot
-            heardText = ""
-            let color = SlotColors.displayName(slot)
-            let name = await obtainName(prompt: "\(color), qual é o seu nome?", clip: "names_pergunta",
-                                        typingTitle: "Nome de \(color)")
-            guard !Task.isCancelled else { return }
-            if let name {
-                setName(name, for: slot)
-                await audio.speak("Prazer, \(self.name(for: slot))!")
+            if await !askName(slot) {
+                // Voz indisponível: um adulto digita os nomes que faltam.
+                startTyping(Array(slots[index...]))
+                return
             }
         }
         guard !Task.isCancelled else { return }
         finishNaming()
     }
 
-    func finishNaming() {
+    private func finishNaming() {
         namingSlot = nil
         isListening = false
         step = .ready
@@ -166,81 +138,34 @@ extension GameLoop {
         }
     }
 
-    // MARK: - Pergunta de nome (voz ou digitado)
-
-    /// Pergunta o nome e escuta. Se a voz não ajudar (sem permissão, não entendeu duas vezes), um adulto digita.
-    /// Devolve nil se a pessoa cancelar.
-    func obtainName(prompt: String, clip: String?, typingTitle: String) async -> String? {
-        quickName = nil
-        awaitingName = true
-        defer { awaitingName = false }
-        meetingPrompt = prompt
+    /// Pergunta o nome de uma vaga e escuta (no aparelho). Devolve false se a voz não está disponível.
+    private func askName(_ slot: ChildSlot) async -> Bool {
+        namingSlot = slot
+        heardText = ""
         for attempt in 0..<2 {
-            let spoken = attempt == 0 ? prompt : "Não entendi. Pode repetir o seu nome?"
-            if let clip, attempt == 0 {
-                await audio.play(clip, fallbackText: spoken)
+            if attempt == 0 {
+                await audio.play("names_pergunta", fallbackText: "\(SlotColors.displayName(slot)), qual é o seu nome?")
             } else {
-                await audio.speak(spoken)
+                await audio.play("names_repetir", fallbackText: "Não entendi. Pode repetir o seu nome?")
             }
-            if let quick = quickName { return quick }
-            guard !Task.isCancelled else { return nil }
+            guard !Task.isCancelled else { return true }
             isListening = true
-            heardText = ""
             defer { isListening = false }
             do {
-                let heard = try await listen()
-                if let quick = quickName { return quick }
-                guard !Task.isCancelled else { return nil }
-                if let name = NameParser.clean(heard) { return name }
-            } catch is CancellationError {
-                if let quick = quickName { return quick }
-                return nil
+                let heard = try await listener.listen { self.heardText = $0 }
+                guard !Task.isCancelled else { return true }
+                if let name = NameParser.clean(heard) {
+                    setName(name, for: slot)
+                    await audio.speak("Prazer, \(name)!")
+                    return true
+                }
             } catch {
                 logger.error("Escuta de nome indisponível: \(String(describing: error), privacy: .public)")
                 namingNotice = Self.message(for: error)
-                break
+                return false
             }
         }
-        isListening = false
-        return await requestTypedName(title: typingTitle)
-    }
-
-    private func listen() async throws -> String {
-        let task = Task { try await listener.listen { self.heardText = $0 } }
-        listenTask = task
-        return try await withTaskCancellationHandler {
-            try await task.value
-        } onCancel: {
-            task.cancel()
-        }
-    }
-
-    func requestTypedName(title: String) async -> String? {
-        guard !Task.isCancelled else { return nil }
-        return await withTaskCancellationHandler {
-            await withCheckedContinuation { (continuation: CheckedContinuation<String?, Never>) in
-                typingContinuation = continuation
-                typingRequest = TypingRequest(title: title)
-            }
-        } onCancel: {
-            Task { @MainActor in self.resolveTyping(nil) }
-        }
-    }
-
-    /// Resposta do alerta de digitação (nil = cancelou).
-    func resolveTyping(_ text: String?) {
-        typingRequest = nil
-        let continuation = typingContinuation
-        typingContinuation = nil
-        continuation?.resume(returning: NameParser.clean(text ?? ""))
-    }
-
-    static func joined(_ names: [String]) -> String {
-        switch names.count {
-        case 0: ""
-        case 1: names[0]
-        default: names.dropLast().joined(separator: ", ") + " e " + names[names.count - 1]
-        }
+        return true
     }
 
     private static func message(for error: Error) -> String {

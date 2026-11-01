@@ -5,7 +5,6 @@ struct MenuView: View {
     @Bindable var loop: GameLoop
     let onPlay: () -> Void
     let onDiagnostic: () -> Void
-    @State private var showPlayers = false
 
     var body: some View {
         ZStack {
@@ -26,7 +25,7 @@ struct MenuView: View {
                         picker("Nível", selection: $loop.settings.difficulty, options: Difficulty.allCases, label: Self.name)
                         picker("Tempo para reagir", selection: $loop.settings.tolerance, options: Tolerance.allCases, label: Self.name)
                         picker("Comandos", selection: $loop.settings.commandSet, options: [.classic, .school], label: Self.name)
-                        Toggle("Conhecer os jogadores (rosto e nome)", isOn: $loop.settings.askNames)
+                        Toggle("Perguntar o nome de cada jogador", isOn: $loop.settings.askNames)
                             .font(.headline)
                             .foregroundStyle(Color.aganhaCream)
                     }
@@ -42,9 +41,6 @@ struct MenuView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(Color(hex: "#36C9A6"))
 
-                    Button("Jogadores salvos") { showPlayers = true }
-                        .foregroundStyle(Color.aganhaCream.opacity(0.9))
-
                     Button("Diagnóstico da câmera", action: onDiagnostic)
                         .foregroundStyle(Color.aganhaCream.opacity(0.7))
                 }
@@ -53,7 +49,6 @@ struct MenuView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .sheet(isPresented: $showPlayers) { PlayersView(store: loop.profileStore) }
     }
 
     private func picker<Value: Hashable>(_ title: LocalizedStringKey, selection: Binding<Value>, options: [Value],

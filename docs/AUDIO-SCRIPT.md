@@ -171,14 +171,3 @@ Pastas sugeridas: `pt-BR/lu/` e `pt-BR/chico/` (todos os arquivos do locutor jun
 | `names_prazer` | Prazer em conhecer você! | 1 | P1 | Calmo e simpático; faça uma pequena pausa no final, a pessoa vai responder em seguida. |
 
 Os nomes das crianças continuam sendo falados pela voz do sistema (ex.: "Paulo errou!").
-
-## 9. Apresentação dos jogadores (novo)
-
-| ID | Texto | Variações | Prior. | Direção |
-|---|---|---|---|---|
-| `meet_intro` | Vamos conhecer vocês! | 1 | P0 | Calmo e simpático; deixe uma pequena pausa no final (a pessoa vai agir em seguida). |
-| `meet_first` | Quem é o primeiro? Chegue perto e mostre o seu rosto. | 1 | P0 | Calmo e simpático; deixe uma pequena pausa no final (a pessoa vai agir em seguida). |
-| `meet_more` | Tem mais alguém? Mostre o rosto, ou toque em Pronto. | 1 | P0 | Calmo e simpático; deixe uma pequena pausa no final (a pessoa vai agir em seguida). |
-| `meet_place` | Agora coloque o aparelho em pé, encostado no chão e apoiado na parede. | 1 | P0 | Calmo e simpático; deixe uma pequena pausa no final (a pessoa vai agir em seguida). |
-
-"Já conheço fulano e ciclano…", "Oi, fulano!" e "Prazer, fulano!" têm nomes dentro e continuam pela voz do sistema.
