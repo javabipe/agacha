@@ -4,6 +4,14 @@ import Foundation
 import os
 import Speech
 
+/// Retrato do que o reconhecedor já devolveu (lido pelo laço principal).
+private struct ListenState {
+    let text: String
+    let changedAt: Date
+    let isFinal: Bool
+    let failed: Bool
+}
+
 /// Escuta uma criança dizer o nome. Usa o reconhecimento no próprio aparelho quando o idioma está
 /// disponível offline; senão o iOS pode processar o áudio nos servidores da Apple. Nada é gravado em disco.
 @MainActor
@@ -21,15 +29,8 @@ public final class NameListener {
         private var _isFinal = false
         private var _failed = false
 
-        struct State {
-            let text: String
-            let changedAt: Date
-            let isFinal: Bool
-            let failed: Bool
-        }
-
-        var snapshot: State {
-            lock.withLock { State(text: _text, changedAt: _changedAt, isFinal: _isFinal, failed: _failed) }
+        var snapshot: ListenState {
+            lock.withLock { ListenState(text: _text, changedAt: _changedAt, isFinal: _isFinal, failed: _failed) }
         }
 
         func markFailed() {
