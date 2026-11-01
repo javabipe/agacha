@@ -70,4 +70,27 @@ import Testing
         #expect(decoded.frames[0].t == 2)
         #expect(decoded.frames[0].people[0].skeleton == makeSkeleton())
     }
+
+    @Test func recalibrationKeepsSlotsAndFixesAStaleStandingReference() {
+        let pipeline = PosePipeline()
+        let size = CGSize(width: 720, height: 1280)
+        var time = 0.0
+        func run(_ skeletons: [Skeleton], seconds: Double) -> FrameAnalysis? {
+            var last: FrameAnalysis?
+            for _ in 0..<Int(seconds / frameStep) {
+                last = pipeline.analyze(skeletons: skeletons, timestamp: time, imageSize: size)
+                time += frameStep
+            }
+            return last
+        }
+        // Calibrou numa posição; depois a pessoa se afastou (quadril mais baixo no quadro) e ficou em pé.
+        _ = run([makeSkeleton(centerX: 0.3), makeSkeleton(centerX: 0.7)], seconds: 0.6)
+        let moved = run([makeSkeleton(centerX: 0.3, hipDrop: 0.2), makeSkeleton(centerX: 0.7)], seconds: 0.6)
+        #expect(moved?.people.first { $0.slot == 0 }?.reading.posture == .crouching)   // referência velha
+
+        pipeline.requestRecalibration()
+        let fixed = run([makeSkeleton(centerX: 0.3, hipDrop: 0.2), makeSkeleton(centerX: 0.7)], seconds: 0.6)
+        #expect(fixed?.people.first { $0.slot == 0 }?.reading.posture == .standing)
+        #expect(fixed?.people.compactMap(\.slot).sorted() == [0, 1])   // vagas preservadas
+    }
 }

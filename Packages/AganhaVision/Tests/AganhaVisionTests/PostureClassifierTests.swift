@@ -52,6 +52,34 @@ import Testing
         #expect(crouched.reading.posture == .crouching)
     }
 
+    @Test func calibrationWaitsUntilThePersonStandsStill() {
+        var classifier = PostureClassifier()
+        var time = 0.0
+        var reading = PostureReading(posture: .unknown, crouchIndex: nil, isCalibrated: false)
+        // Andando para trás/para frente: a altura do quadril varia a cada quadro.
+        for frame in 0..<60 {
+            let drop = frame % 2 == 0 ? 0.0 : 0.08
+            reading = classifier.update(skeleton: makeSkeleton(hipDrop: drop), at: time, tuning: tuning)
+            time += frameStep
+        }
+        #expect(!reading.isCalibrated)
+        // Parou: calibra com a pessoa em pé.
+        let still = feed(&classifier, skeleton: makeSkeleton(hipDrop: 0.02), from: time, seconds: 0.5)
+        #expect(still.reading.isCalibrated)
+        #expect(still.reading.posture == .standing)
+    }
+
+    @Test func calibrationGivesUpWaitingWhenNoiseNeverSettles() {
+        var classifier = PostureClassifier()
+        var time = 0.0
+        var reading = PostureReading(posture: .unknown, crouchIndex: nil, isCalibrated: false)
+        for frame in 0..<600 {
+            reading = classifier.update(skeleton: makeSkeleton(hipDrop: frame % 2 == 0 ? 0 : 0.08), at: time, tuning: tuning)
+            time += frameStep
+        }
+        #expect(reading.isCalibrated)
+    }
+
     @Test func crouchNeedsDebounce() {
         var classifier = PostureClassifier()
         var t = feed(&classifier, skeleton: makeSkeleton(), from: 0, seconds: 0.5).end

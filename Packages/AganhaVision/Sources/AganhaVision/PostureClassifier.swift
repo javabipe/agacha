@@ -19,22 +19,40 @@ public struct PostureClassifier: Sendable {
     private struct Average: Sendable {
         var sum = 0.0
         var samples = 0
+        var low = Double.infinity
+        var high = -Double.infinity
 
         var mean: Double? { samples == 0 ? nil : sum / Double(samples) }
+        /// Diferença entre o maior e o menor valor visto.
+        var spread: Double { samples < 2 ? 0 : high - low }
 
         mutating func add(_ value: Double?) {
             guard let value else { return }
             sum += value
             samples += 1
+            low = min(low, value)
+            high = max(high, value)
         }
     }
 
     private struct CalibrationSums: Sendable {
         var frames = 0
+        /// Quantas vezes a calibração recomeçou por a pessoa estar se mexendo.
+        var restarts = 0
         var hip = Average()
         var shoulder = Average()
         var nose = Average()
         var torso = Average()
+
+        var spread: Double { max(hip.spread, shoulder.spread, nose.spread) }
+
+        mutating func add(_ measure: Measure) {
+            frames += 1
+            hip.add(measure.hipY)
+            shoulder.add(measure.shoulderY)
+            nose.add(measure.noseY)
+            torso.add(measure.torso)
+        }
     }
 
     /// Alturas de referência "em pé" (y para baixo) e escala. Cada junta é opcional: quem está perto
@@ -59,6 +77,8 @@ public struct PostureClassifier: Sendable {
     private var lastValid: TimeInterval?
     private var standingSince: TimeInterval?
 
+    private static let maxCalibrationRestarts = 150
+
     public init() {}
 
     public mutating func reset() {
@@ -74,11 +94,15 @@ public struct PostureClassifier: Sendable {
 
         switch phase {
         case .calibrating(var sums):
-            sums.frames += 1
-            sums.hip.add(measure.hipY)
-            sums.shoulder.add(measure.shoulderY)
-            sums.nose.add(measure.noseY)
-            sums.torso.add(measure.torso)
+            sums.add(measure)
+            if sums.spread > tuning.calibrationStability, sums.restarts < Self.maxCalibrationRestarts {
+                // A pessoa estava se mexendo: descarta o que juntou e recomeça só com este quadro.
+                // Depois de muitas tentativas (ruído do Vision), aceita para não ficar sem calibrar.
+                let restarts = sums.restarts + 1
+                sums = CalibrationSums()
+                sums.restarts = restarts
+                sums.add(measure)
+            }
             guard sums.frames >= tuning.calibrationFrames else {
                 phase = .calibrating(sums)
                 return PostureReading(posture: .unknown, crouchIndex: nil, isCalibrated: false)

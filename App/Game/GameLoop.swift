@@ -109,6 +109,8 @@ final class GameLoop {
         guard slots.count >= 2 else { return }
         promptTask?.cancel()
         audio.stop()
+        // Durante o posicionamento as pessoas se mexem; a referência de "em pé" é refeita agora, com todos parados.
+        pipeline.requestRecalibration()
         stage = .playing
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max))
@@ -277,9 +279,25 @@ final class GameLoop {
                 await audio.play(step.clip, fallbackText: step.text)
                 guard !Task.isCancelled else { return }
                 if step.clip.hasPrefix("flow_count_") { try? await Task.sleep(for: .milliseconds(250)) }
+                if step.clip == "flow_todos_em_pe" { await waitForCalibration() }
+                guard !Task.isCancelled else { return }
             }
             countdownText = nil
             send(.countdownFinished)
+        }
+    }
+
+    /// Espera todos os jogadores terminarem de calibrar "em pé" (ou desiste depois de alguns segundos).
+    private func waitForCalibration(timeout: Double = 4) async {
+        let slots = state.config?.slots ?? []
+        let deadline = Self.now() + timeout
+        countdownText = String(localized: "Fiquem parados!")
+        while Self.now() < deadline, !Task.isCancelled {
+            let ready = slots.allSatisfy { slot in
+                analysis?.people.first { $0.slot == slot }?.reading.isCalibrated == true
+            }
+            if ready { return }
+            try? await Task.sleep(for: .milliseconds(100))
         }
     }
 

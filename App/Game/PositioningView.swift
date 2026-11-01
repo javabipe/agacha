@@ -11,7 +11,7 @@ struct PositioningView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             CameraPreview(camera: loop.camera).ignoresSafeArea()
-            SkeletonOverlay(analysis: loop.analysis).ignoresSafeArea()
+            SkeletonOverlay(analysis: loop.analysis, showPosture: false).ignoresSafeArea()
             VStack(spacing: 12) {
                 banner
                 Spacer()

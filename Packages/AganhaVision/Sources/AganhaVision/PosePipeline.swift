@@ -53,6 +53,7 @@ public final class PosePipeline: @unchecked Sendable {
     private let lock = NSLock()
     private var _tuning = PostureTuning.normal
     private var _resetRequested = false
+    private var _recalibrateRequested = false
 
     public init() {}
 
@@ -64,6 +65,11 @@ public final class PosePipeline: @unchecked Sendable {
     /// Zera vagas e calibrações no próximo quadro.
     public func requestReset() {
         lock.withLock { _resetRequested = true }
+    }
+
+    /// Refaz só a calibração de "em pé" de cada pessoa no próximo quadro, mantendo as vagas.
+    public func requestRecalibration() {
+        lock.withLock { _recalibrateRequested = true }
     }
 
     /// Caminho da câmera.
@@ -85,15 +91,14 @@ public final class PosePipeline: @unchecked Sendable {
     /// Caminho dos testes/fixtures: esqueletos já detectados.
     public func analyze(skeletons: [Skeleton], timestamp: TimeInterval, imageSize: CGSize,
                         detectionMs: Double = 0, startedAt: UInt64? = nil) -> FrameAnalysis {
-        let (tuning, shouldReset) = lock.withLock {
-            let state = (_tuning, _resetRequested)
+        let (tuning, shouldReset, shouldRecalibrate) = lock.withLock {
+            let state = (_tuning, _resetRequested, _recalibrateRequested)
             _resetRequested = false
+            _recalibrateRequested = false
             return state
         }
-        if shouldReset {
-            tracker.reset()
-            classifiers = [:]
-        }
+        if shouldReset { tracker.reset() }
+        if shouldReset || shouldRecalibrate { classifiers = [:] }
 
         let slots = tracker.assign(to: skeletons)
         var seen = Set<ChildSlot>()

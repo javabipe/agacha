@@ -22,6 +22,10 @@ public struct PostureTuning: Codable, Sendable, Equatable {
     /// Escala (fração do quadro) usada no lugar do tronco quando ombros/quadris não aparecem (pessoa perto).
     public var noseFallbackScale: Double = 0.25
 
+    /// Variação máxima (fração do quadro) da altura de quadril/ombros/nariz durante a calibração.
+    /// Se a pessoa se mexer mais que isso, a calibração recomeça (só calibra parada).
+    public var calibrationStability: Double = 0.04
+
     public init() {}
 
     public static let normal = PostureTuning()
