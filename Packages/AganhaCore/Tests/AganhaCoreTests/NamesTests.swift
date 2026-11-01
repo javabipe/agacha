@@ -38,19 +38,20 @@ import Testing
 
 @Suite struct VoiceIntentTests {
     @Test func againPhrases() {
-        for phrase in ["de novo!", "De novo", "vamos jogar", "outra vez", "sim", "mais uma", "bora", "continuar"] {
+        for phrase in ["de novo!", "De novo", "vamos jogar", "outra vez", "sim", "mais uma", "bora", "continuar",
+                       "vamos jogar de novo para ganhar", "quero jogar de novo, chega mais perto"] {
             #expect(VoiceIntent.parse(phrase) == .playAgain, "\(phrase)")
         }
     }
 
-    @Test func menuPhrasesWinOverAgain() {
-        for phrase in ["menu", "sair", "chega", "não", "não quero jogar de novo", "acabou", "para"] {
+    @Test func menuPhrases() {
+        for phrase in ["menu", "sair", "não", "não quero jogar de novo", "acabou", "cansei", "quero sair"] {
             #expect(VoiceIntent.parse(phrase) == .menu, "\(phrase)")
         }
     }
 
-    @Test func unrelatedOrEmptyIsNil() {
-        for phrase in ["", "o gato subiu no telhado", "assim"] {
+    @Test func contradictoryOrUnrelatedIsNil() {
+        for phrase in ["", "o gato subiu no telhado", "assim", "vamos jogar ou sair", "para"] {
             #expect(VoiceIntent.parse(phrase) == nil, "\(phrase)")
         }
     }

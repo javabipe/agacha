@@ -46,21 +46,26 @@ public enum VoiceIntent: Sendable, Equatable {
     case playAgain
     case menu
 
-    private static let menuPhrases = [
-        "menu", "sair", "chega", "parar", "para", "terminar", "acabou", "nao", "nao quero", "cansei", "encerrar"
-    ]
+    /// Pedidos claros de sair. ("para" e "chega" sozinhos ficaram de fora: aparecem em frases como
+    /// "jogar de novo para ganhar" e "chega mais perto".)
+    private static let leavePhrases = ["menu", "sair", "cansei", "encerrar", "terminar", "acabou", "parar", "chega de jogar"]
     private static let againPhrases = [
         "de novo", "novamente", "outra vez", "mais uma", "mais um", "jogar", "continuar", "continua", "vamos",
-        "sim", "bora", "quero", "repetir", "revanche"
+        "sim", "bora", "repetir", "revanche"
     ]
 
     /// Reconhece frases como "de novo!", "vamos jogar", "não quero mais" (nada → nil).
-    /// "Não" e "sair" têm prioridade: "não quero jogar de novo" é menu.
+    /// Negação ("não") ganha de tudo: "não quero jogar de novo" é menu.
+    /// Se pedem as duas coisas ao mesmo tempo, não adivinha (nil) e escuta de novo.
     public static func parse(_ transcript: String) -> VoiceIntent? {
         let text = " " + words(transcript).joined(separator: " ") + " "
-        if menuPhrases.contains(where: { text.contains(" \($0) ") }) { return .menu }
-        if againPhrases.contains(where: { text.contains(" \($0) ") }) { return .playAgain }
-        return nil
+        func has(_ phrase: String) -> Bool { text.contains(" \(phrase) ") }
+        let wantsAgain = againPhrases.contains(where: has)
+        let wantsLeave = leavePhrases.contains(where: has)
+        if has("nao") { return .menu }
+        if wantsAgain && wantsLeave { return nil }
+        if wantsLeave { return .menu }
+        return wantsAgain ? .playAgain : nil
     }
 
     private static func words(_ text: String) -> [String] {

@@ -29,6 +29,7 @@ public enum GameReducer {
         case .unfair:
             guard case .result = state.phase else { return [] }
             state.players = state.snapshot
+            state.director = state.directorSnapshot
             state.history.removeLast()
             state.round -= 1
             return issueCommand(&state)
@@ -84,6 +85,7 @@ public enum GameReducer {
 
     private static func issueCommand(_ state: inout GameState) -> [GameEffect] {
         guard var director = state.director else { return [] }
+        state.directorSnapshot = director
         let command = director.next()
         state.director = director
         state.round += 1

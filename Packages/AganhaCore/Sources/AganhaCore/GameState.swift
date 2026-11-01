@@ -103,6 +103,8 @@ public struct GameState: Sendable, Equatable {
     var samples: [ChildSlot: [PostureSample]] = [:]
     /// Jogadores antes do julgamento da rodada atual (para "Foi injusto!").
     var snapshot: [ChildSlot: PlayerState] = [:]
+    /// Diretor antes de sortear o comando atual ("Foi injusto!" repete o mesmo comando, sem pular a numeração).
+    var directorSnapshot: Director?
 
     public init() {}
 

@@ -59,8 +59,11 @@ final class GameLoop {
     let logger = Logger(subsystem: "br.com.agacha.app", category: "gameloop")
 
     var cameraRunning = false
+    var cameraStarting = false
     var gameTask: Task<Void, Never>?
     var gameOverTask: Task<Void, Never>?
+    /// Só depois da comemoração o fim de partida aceita o gesto/voz de "de novo".
+    var gameOverControlsActive = false
     var playAgainSince: Double?
     var replayTask: Task<Void, Never>?
     private var closeTask: Task<Void, Never>?
@@ -246,7 +249,11 @@ final class GameLoop {
                                     isManual: result.finished == nil || !result.eliminated.isEmpty)
         }
         if withVideo {
-            replayTask = Task { replayAsset = await recorder.capture(seconds: 4) }
+            replayTask = Task {
+                let asset = await recorder.capture(seconds: 4)
+                guard !Task.isCancelled else { return }
+                replayAsset = asset
+            }
         }
         let deadline = Self.now() + delay
         resultTask = Task {
@@ -268,6 +275,7 @@ final class GameLoop {
     private func cancelGame() {
         gameTask?.cancel()
         gameOverTask?.cancel()
+        gameOverControlsActive = false
         replayTask?.cancel()
         replayAsset = nil
         recorder.stop()

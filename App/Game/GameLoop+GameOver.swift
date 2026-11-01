@@ -11,6 +11,7 @@ extension GameLoop {
     func startGameOverControls() {
         guard case .gameOver = state.phase else { return }
         gameOverTask?.cancel()
+        gameOverControlsActive = true
         gameOverTask = Task {
             await audio.speak("Vamos jogar de novo? Diga: de novo! Ou levante os dois braços. Para sair, diga: menu.")
             while !Task.isCancelled {
@@ -42,6 +43,7 @@ extension GameLoop {
 
     func playAgain() {
         gameOverTask?.cancel()
+        gameOverControlsActive = false
         playAgainSince = nil
         startPositioning(keepSlots: true)
     }

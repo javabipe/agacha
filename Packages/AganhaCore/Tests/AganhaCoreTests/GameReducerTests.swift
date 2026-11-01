@@ -137,6 +137,20 @@ import Testing
         #expect(effects == [.playCommand(command)])
     }
 
+    @Test func unfairRepeatsTheSameCommandWithoutSkippingNumbers() {
+        var state = started(config())
+        guard case let .announcing(first) = state.phase else { Issue.record("fase"); return }
+        playRound(&state, errors: [1])
+        GameReducer.reduce(&state, .unfair)
+        guard case let .announcing(again) = state.phase else { Issue.record("fase"); return }
+        #expect(again == first)
+        playRound(&state)
+        GameReducer.reduce(&state, .next)
+        guard case let .announcing(second) = state.phase else { Issue.record("fase"); return }
+        #expect(second.number == first.number + 1)
+        #expect(state.round == 2)
+    }
+
     @Test func unfairOnFinalRoundReopensTheGame() {
         var state = started(config(slots: [0, 1]))
         playRound(&state, errors: [1])

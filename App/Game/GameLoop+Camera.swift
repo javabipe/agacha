@@ -7,7 +7,9 @@ extension GameLoop {
     // MARK: - Câmera
 
     func startCamera() async {
-        guard !cameraRunning else { return }
+        guard !cameraRunning, !cameraStarting else { return }
+        cameraStarting = true
+        defer { cameraStarting = false }
         let pipeline = pipeline
         let recorder = recorder
         let loop = self
@@ -49,7 +51,7 @@ extension GameLoop {
             checkRaisedArms(report, at: analysis.timestamp)
         case .playing:
             replay.append(analysis)
-            if case .gameOver = state.phase { checkPlayAgainGesture(analysis) }
+            if case .gameOver = state.phase, gameOverControlsActive { checkPlayAgainGesture(analysis) }
             guard case .window = state.phase else { return }
             let samples = analysis.people.compactMap { person -> PostureSample? in
                 guard let slot = person.slot else { return nil }

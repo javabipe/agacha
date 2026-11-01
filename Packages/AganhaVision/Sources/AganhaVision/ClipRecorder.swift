@@ -2,6 +2,7 @@ import AVFoundation
 import CoreMedia
 import CoreVideo
 import Foundation
+import os
 
 /// Grava, em arquivos temporários curtos, os últimos segundos da câmera para o replay de "Alguém errou".
 /// Tudo fica na pasta temporária do app, é apagado ao fim do replay, ao sair da partida e na próxima abertura.
@@ -30,6 +31,11 @@ public final class ClipRecorder: @unchecked Sendable {
     private var finished: [Segment] = []
     private var pendingFinishes = 0
     private var counter = 0
+    /// Muda a cada `stop`/`resume`/`removeAll`; pedaços que terminam de gravar depois disso são descartados.
+    private var generation = 0
+    /// Depois de uma falha ao abrir o arquivo, espera um pouco antes de tentar de novo.
+    private var nextOpenAttempt = 0.0
+    private let logger = Logger(subsystem: "br.com.agacha.vision", category: "clips")
 
     public init(directory: URL? = nil) {
         self.directory = directory ?? FileManager.default.temporaryDirectory.appending(path: "agacha-replay", directoryHint: .isDirectory)
@@ -53,6 +59,7 @@ public final class ClipRecorder: @unchecked Sendable {
         lock.withLock {
             recording = false
             frozen = false
+            generation += 1
             abandonCurrent()
             finished = []
         }
@@ -64,8 +71,11 @@ public final class ClipRecorder: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard recording, !frozen else { return }
-        if let current, time - current.start >= Self.segmentSeconds { closeCurrent(endingAt: time) }
-        if writer == nil { openSegment(for: buffer, at: time) }
+        if let current, time - current.start >= Self.segmentSeconds { closeCurrent() }
+        if writer == nil {
+            guard time >= nextOpenAttempt else { return }
+            openSegment(for: buffer, at: time)
+        }
         guard let input, let adaptor, input.isReadyForMoreMediaData else { return }
         if adaptor.append(buffer, withPresentationTime: CMTime(seconds: time, preferredTimescale: 600)) {
             current?.end = time
@@ -75,16 +85,18 @@ public final class ClipRecorder: @unchecked Sendable {
     /// Congela a gravação e devolve os últimos `seconds` segundos como vídeo para tocar.
     /// Chame `resume()` quando terminar de mostrar (isso apaga os arquivos).
     public func capture(seconds: Double) async -> AVAsset? {
-        lock.withLock {
+        let generationAtStart = lock.withLock { () -> Int in
             frozen = true
-            closeCurrent(endingAt: current?.end ?? 0)
+            closeCurrent()
+            return generation
         }
         // Espera os pedaços em fechamento terminarem de ser gravados.
-        for _ in 0..<50 {
+        for _ in 0..<75 {
             if lock.withLock({ pendingFinishes == 0 }) { break }
             try? await Task.sleep(for: .milliseconds(40))
         }
         let chosen = lock.withLock { () -> [Segment] in
+            guard generation == generationAtStart else { return [] }
             var total = 0.0
             var picked: [Segment] = []
             for segment in finished.reversed() {
@@ -100,6 +112,7 @@ public final class ClipRecorder: @unchecked Sendable {
     /// Terminou o replay: apaga o que foi gravado e volta a gravar.
     public func resume() {
         lock.withLock {
+            generation += 1
             abandonCurrent()
             finished = []
             frozen = false
@@ -109,6 +122,7 @@ public final class ClipRecorder: @unchecked Sendable {
 
     public func removeAll() {
         lock.withLock {
+            generation += 1
             abandonCurrent()
             finished = []
         }
@@ -137,11 +151,11 @@ public final class ClipRecorder: @unchecked Sendable {
             ]
             let newInput = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
             newInput.expectsMediaDataInRealTime = true
-            guard newWriter.canAdd(newInput) else { return }
+            guard newWriter.canAdd(newInput) else { throw CocoaError(.fileWriteUnknown) }
             newWriter.add(newInput)
             // O adaptador precisa existir antes de `startWriting()` (senão o AVFoundation aborta).
             let newAdaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: newInput, sourcePixelBufferAttributes: nil)
-            guard newWriter.startWriting() else { return }
+            guard newWriter.startWriting() else { throw newWriter.error ?? CocoaError(.fileWriteUnknown) }
             newWriter.startSession(atSourceTime: CMTime(seconds: time, preferredTimescale: 600))
             writer = newWriter
             input = newInput
@@ -149,11 +163,14 @@ public final class ClipRecorder: @unchecked Sendable {
             current = Segment(url: url, start: time, end: time)
         } catch {
             writer = nil
+            nextOpenAttempt = time + 1
+            logger.error("Não foi possível abrir o arquivo do replay: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func closeCurrent(endingAt time: Double) {
+    private func closeCurrent() {
         guard let writer, let input, let segment = current else { return }
+        let generationAtClose = generation
         self.writer = nil
         self.input = nil
         adaptor = nil
@@ -164,7 +181,7 @@ public final class ClipRecorder: @unchecked Sendable {
             guard let self else { return }
             lock.withLock {
                 pendingFinishes -= 1
-                if writer.status == .completed {
+                if writer.status == .completed, generationAtClose == generation {
                     finished.append(segment)
                     while finished.count > Self.keptSegments {
                         try? FileManager.default.removeItem(at: finished.removeFirst().url)

@@ -19,9 +19,21 @@ public final class NameListener {
         private var _text = ""
         private var _changedAt = Date.distantPast
         private var _isFinal = false
+        private var _failed = false
 
-        var snapshot: (text: String, changedAt: Date, isFinal: Bool) {
-            lock.withLock { (_text, _changedAt, _isFinal) }
+        struct State {
+            let text: String
+            let changedAt: Date
+            let isFinal: Bool
+            let failed: Bool
+        }
+
+        var snapshot: State {
+            lock.withLock { State(text: _text, changedAt: _changedAt, isFinal: _isFinal, failed: _failed) }
+        }
+
+        func markFailed() {
+            lock.withLock { _failed = true }
         }
 
         func update(text: String, isFinal: Bool) {
@@ -62,7 +74,7 @@ public final class NameListener {
             if let result {
                 box.update(text: result.bestTranscription.formattedString, isFinal: result.isFinal)
             } else if error != nil {
-                box.update(text: box.snapshot.text, isFinal: true)
+                box.markFailed()
             }
         }
     }
@@ -106,6 +118,7 @@ public final class NameListener {
 
         let start = Date()
         var lastReported = ""
+        var failure: Unavailable?
         while !Task.isCancelled {
             try? await Task.sleep(for: .milliseconds(100))
             let state = box.snapshot
@@ -114,6 +127,11 @@ public final class NameListener {
                 onPartial?(state.text)
             }
             let heardSomething = !state.text.isEmpty
+            // Erro logo no começo, sem ter ouvido nada: o reconhecimento não está funcionando (não é só silêncio).
+            if state.failed, !heardSomething {
+                if Date().timeIntervalSince(start) < 2 { failure = .recognizerUnavailable }
+                break
+            }
             if state.isFinal && heardSomething { break }
             if heardSomething, Date().timeIntervalSince(state.changedAt) > silence { break }
             if Date().timeIntervalSince(start) > maxDuration { break }
@@ -124,6 +142,7 @@ public final class NameListener {
         requestBox.request.endAudio()
         task.cancel()
         logger.info("Escuta encerrada (\(box.snapshot.text.isEmpty ? "sem fala" : "com fala", privacy: .public))")
+        if let failure { throw failure }
         return box.snapshot.text
     }
 }

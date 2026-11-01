@@ -46,10 +46,11 @@ extension GameLoop {
     /// Atalho: usa um nome já conhecido para quem está sendo perguntado, sem falar.
     func useRecentName(_ name: String) {
         guard step == .naming, let slot = namingSlot else { return }
-        namingTask?.cancel()
+        let previous = namingTask
+        previous?.cancel()
         audio.stop()
         setName(name, for: slot)
-        resumeNaming()
+        resumeNaming(after: previous)
     }
 
     func skipNaming() {
@@ -108,9 +109,14 @@ extension GameLoop {
         namingTask = Task { await runNaming(pending, introduce: true) }
     }
 
-    private func resumeNaming() {
-        let pending = report.people.map(\.slot).filter { names[$0] == nil }
-        namingTask = Task { await runNaming(pending, introduce: false) }
+    /// Continua com quem falta, mas só depois de a escuta anterior terminar (duas escutas não podem se sobrepor).
+    private func resumeNaming(after previous: Task<Void, Never>?) {
+        namingTask = Task {
+            await previous?.value
+            guard !Task.isCancelled else { return }
+            let pending = report.people.map(\.slot).filter { names[$0] == nil }
+            await runNaming(pending, introduce: false)
+        }
     }
 
     private func runNaming(_ slots: [ChildSlot], introduce: Bool) async {
