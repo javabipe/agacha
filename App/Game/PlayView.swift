@@ -1,7 +1,5 @@
 import AganhaCore
 import AganhaVision
-import AVFoundation
-import AVKit
 import SwiftUI
 
 /// Partida: tela virada para as crianças (palavra gigante, cor de fundo, tia, faixa de status).
@@ -40,8 +38,9 @@ struct PlayView: View {
                     .transition(.opacity)
             }
             VStack {
-                HStack {
+                HStack(spacing: 16) {
                     Spacer()
+                    AirPlayButton().frame(width: 36, height: 36)
                     Button("Sair", systemImage: "xmark.circle.fill") { confirmQuit = true }
                         .labelStyle(.iconOnly)
                         .font(.title)
@@ -88,95 +87,5 @@ struct PlayView: View {
                          detail: loop.statusDetail(for: slot))
             }
         }
-    }
-}
-
-/// "Alguém errou!": replay em esqueleto e em vídeo, "Foi injusto!" e "Continuar" (segue sozinho depois de alguns segundos).
-struct EliminatedView: View {
-    let loop: GameLoop
-    let info: ResultInfo
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.82).ignoresSafeArea()
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text(info.result.isTie ? "Todos erraram juntos!" : "Alguém errou!")
-                        .font(.system(size: 48, weight: .black, design: .rounded))
-                        .foregroundStyle(Color.aganhaYellow)
-                    if let asset = loop.replayAsset {
-                        ReplayVideoView(asset: asset)
-                            .aspectRatio(16 / 9, contentMode: .fit)
-                            .frame(maxWidth: 560)
-                            .clipShape(.rect(cornerRadius: 16))
-                    }
-                    ForEach(info.result.wrong, id: \.self) { slot in
-                        VStack(spacing: 8) {
-                            SlotChip(slot: slot, name: loop.name(for: slot), detail: loop.statusDetail(for: slot))
-                            HStack(spacing: 8) {
-                                ForEach(Array((info.replays[slot] ?? []).enumerated()), id: \.offset) { _, skeleton in
-                                    SkeletonThumbnail(skeleton: skeleton, color: SlotPalette.color(for: slot))
-                                        .frame(width: 110, height: 150)
-                                        .background(.white.opacity(0.08), in: .rect(cornerRadius: 12))
-                                }
-                            }
-                        }
-                    }
-                    if info.isManual { actions }
-                }
-                .padding(24)
-                .frame(maxWidth: .infinity)
-            }
-        }
-    }
-
-    private var actions: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                Button { loop.unfair() } label: {
-                    Text("Foi injusto!").font(.title2.weight(.bold)).frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                Button { loop.continueNow() } label: {
-                    Text("Continuar").font(.title2.weight(.bold)).frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Color(hex: "#36C9A6"))
-            }
-            .controlSize(.large)
-            TimelineView(.animation) { _ in
-                let progress = max(0, min(1, (info.continueAt - GameLoop.now()) / info.duration))
-                GeometryReader { geo in
-                    Capsule().fill(.white.opacity(0.2))
-                        .overlay(alignment: .leading) {
-                            Capsule().fill(Color.aganhaYellow).frame(width: geo.size.width * progress)
-                        }
-                }
-                .frame(height: 8)
-            }
-        }
-        .frame(maxWidth: 520)
-    }
-}
-
-/// Vídeo curto da rodada (sem som, repetindo). Existe só até o replay terminar.
-private struct ReplayVideoView: View {
-    let asset: AVAsset
-    @State private var player = AVQueuePlayer()
-    @State private var looper: AVPlayerLooper?
-
-    var body: some View {
-        VideoPlayer(player: player)
-            .onAppear {
-                player.isMuted = true
-                looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(asset: asset))
-                player.play()
-            }
-            .onDisappear {
-                player.pause()
-                looper?.disableLooping()
-                looper = nil
-            }
-            .accessibilityLabel("Replay da rodada em vídeo")
     }
 }

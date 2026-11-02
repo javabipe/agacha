@@ -37,6 +37,8 @@ final class GameLoop {
     private(set) var resultInfo: ResultInfo?
     /// Vídeo temporário da última rodada com erro (apagado ao seguir em frente).
     var replayAsset: AVAsset?
+    /// O vídeo do replay ainda está sendo preparado.
+    var replayPending = false
     /// Fim de partida: pediram para voltar ao menu (por voz).
     var wantsMenu = false
     var step: PositioningStep = .framing
@@ -130,7 +132,7 @@ final class GameLoop {
         stage = .playing
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
-                                maxErrors: settings.maxErrors)
+                                rules: settings.tolerance.rules, maxErrors: settings.maxErrors)
         if settings.recordReplay { recorder.start() }
         send(.start(config))
     }
@@ -221,11 +223,21 @@ final class GameLoop {
     private func playCommand(_ command: Command) {
         let set = state.config?.commandSet ?? settings.commandSet
         gameTask = Task {
+            if let cue = command.cue { await announce(cue) }
+            guard !Task.isCancelled else { return }
             await audio.play("cmd_\(set.audioID(for: command.word))", fallbackText: set.text(for: command.word)) {
                 self.shownCommand = command
                 self.send(.commandAudioStarted(at: Self.now()))
             }
         }
+    }
+
+    /// "Mais rápido!" / "Agora vai ficar difícil!" antes do comando, como o adulto que vai apertando o ritmo.
+    private func announce(_ cue: Cue) async {
+        let (clip, text) = cue == .faster ? ("flow_mais_rapido", "Mais rápido!") : ("flow_ficou_dificil", "Agora vai ficar difícil!")
+        countdownText = text
+        await audio.play(clip, fallbackText: text)
+        countdownText = nil
     }
 
     private func scheduleClose(at time: Double) {
@@ -249,10 +261,12 @@ final class GameLoop {
                                     isManual: result.finished == nil || !result.eliminated.isEmpty)
         }
         if withVideo {
+            replayPending = true
             replayTask = Task {
                 let asset = await recorder.capture(seconds: 4)
                 guard !Task.isCancelled else { return }
                 replayAsset = asset
+                replayPending = false
             }
         }
         let deadline = Self.now() + delay
@@ -269,6 +283,7 @@ final class GameLoop {
     private func releaseReplay() {
         replayTask?.cancel()
         replayAsset = nil
+        replayPending = false
         recorder.resume()
     }
 

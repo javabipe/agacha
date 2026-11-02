@@ -99,14 +99,17 @@ public enum GameReducer {
         let maxAbsent = state.config?.maxAbsentStreak ?? 3
         let before = state.survivors
         var verdicts: [ChildSlot: Verdict] = [:]
+        var details: [ChildSlot: Judge.Assessment] = [:]
         var eliminated: [ChildSlot] = []
         var wrong: [ChildSlot] = []
         let maxErrors = state.config?.maxErrors ?? 1
 
         for slot in before {
-            let verdict = Judge.verdict(expected: command.word, samples: state.samples[slot] ?? [], windowEnd: windowEnd,
-                                        rules: state.config?.rules ?? JudgeRules())
+            let assessment = Judge.assess(expected: command.word, samples: state.samples[slot] ?? [], windowEnd: windowEnd,
+                                          rules: state.config?.rules ?? JudgeRules())
+            let verdict = assessment.verdict
             verdicts[slot] = verdict
+            details[slot] = assessment
             var player = state.players[slot] ?? PlayerState()
             switch verdict {
             case .ok:
@@ -145,7 +148,8 @@ public enum GameReducer {
             for slot in finished.winners { state.players[slot]?.points += winnerBonus }
         }
 
-        let result = RoundResult(command: command, verdicts: verdicts, wrong: wrong.sorted(), eliminated: eliminated.sorted(),
+        let result = RoundResult(command: command, verdicts: verdicts, details: details, wrong: wrong.sorted(),
+                                 eliminated: eliminated.sorted(),
                                  survivors: survivors, isTie: isTie, finished: finished)
         state.history.append(result)
         state.phase = .result(result)

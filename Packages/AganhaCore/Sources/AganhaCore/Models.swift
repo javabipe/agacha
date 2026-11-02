@@ -51,6 +51,15 @@ public enum Tolerance: String, Codable, Sendable, CaseIterable {
     case normal
     case rigido
 
+    /// Quão completo o movimento precisa ser: quem tem mais tolerância pode ficar um pouco mais "torto".
+    public var rules: JudgeRules {
+        switch self {
+        case .pequenos: JudgeRules(standMax: 0.35, crouchMin: 0.40)
+        case .normal: JudgeRules(standMax: 0.30, crouchMin: 0.45)
+        case .rigido: JudgeRules(standMax: 0.25, crouchMin: 0.50)
+        }
+    }
+
     /// Duração da janela de julgamento (ms), que começa 300 ms depois do início do áudio.
     /// Precisa caber a reação (~0,4 s), levantar de um agachamento (~0,8 s) e a confirmação da postura.
     public var windowMs: Int {
@@ -97,6 +106,12 @@ public enum CommandSet: String, Codable, Sendable, CaseIterable {
     }
 }
 
+/// Aviso de que a brincadeira está ficando mais difícil.
+public enum Cue: String, Codable, Sendable, Equatable {
+    case faster
+    case harder
+}
+
 /// Um comando da tia. A palavra falada (`word`) é o que vale para o julgamento;
 /// o gesto (`gesture`) pode ser o contrário, e então é um truque.
 public struct Command: Sendable, Equatable {
@@ -111,11 +126,14 @@ public struct Command: Sendable, Equatable {
     /// O próximo comando vem "emendado" (intervalo mínimo). Só no Furacão.
     public let chainsToNext: Bool
     public let windowMs: Int
+    /// Aviso falado antes deste comando quando o ritmo sobe ("Mais rápido!", "Agora vai ficar difícil!").
+    public let cue: Cue?
 
     public var isTrick: Bool { word != gesture }
 
     public init(number: Int, word: Stance, gesture: Stance, isRepeat: Bool, gapMs: Int,
-                chainsToNext: Bool, windowMs: Int) {
+                chainsToNext: Bool, windowMs: Int, cue: Cue? = nil) {
+        self.cue = cue
         self.number = number
         self.word = word
         self.gesture = gesture

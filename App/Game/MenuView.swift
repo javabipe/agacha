@@ -5,6 +5,7 @@ struct MenuView: View {
     @Bindable var loop: GameLoop
     let onPlay: () -> Void
     let onDiagnostic: () -> Void
+    @State private var mirroring = MirroringMonitor()
 
     var body: some View {
         ZStack {
@@ -46,6 +47,13 @@ struct MenuView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(Color(hex: "#36C9A6"))
+
+                    HStack(spacing: 8) {
+                        AirPlayButton().frame(width: 36, height: 36)
+                        Text(mirroring.isMirroring ? "Tela na TV" : "Enviar a tela para a TV")
+                            .font(.callout)
+                            .foregroundStyle(Color.aganhaCream.opacity(mirroring.isMirroring ? 1 : 0.8))
+                    }
 
                     Button("Diagnóstico da câmera", action: onDiagnostic)
                         .foregroundStyle(Color.aganhaCream.opacity(0.7))

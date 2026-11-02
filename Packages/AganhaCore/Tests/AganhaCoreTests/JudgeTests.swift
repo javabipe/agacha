@@ -82,4 +82,39 @@ import Testing
         #expect(Judge.verdict(expected: .up, samples: [measured(.standing, index: 0.4)], windowEnd: 1.0, rules: loose) == .ok)
         #expect(Judge.verdict(expected: .down, samples: [measured(.crouching, index: 0.35)], windowEnd: 1.0, rules: loose) == .ok)
     }
+
+    // MARK: - Robustez
+
+    @Test func indexDecidesEvenWhilePostureLags() {
+        // O classificador ainda diz "agachado" (histerese), mas o corpo já está em pé: vale o índice.
+        #expect(Judge.verdict(expected: .up, samples: [measured(.crouching, index: 0.1)], windowEnd: 1.0) == .ok)
+        #expect(Judge.verdict(expected: .down, samples: [measured(.standing, index: 0.6)], windowEnd: 1.0) == .ok)
+    }
+
+    @Test func oneGlitchyFrameAtTheEndDoesNotDecide() {
+        let samples = [measured(.standing, index: 0.05, at: 0.8), measured(.standing, index: 0.1, at: 0.9),
+                       measured(.standing, index: 0.08, at: 0.95), measured(.crouching, index: 0.5, at: 1.0)]
+        #expect(Judge.verdict(expected: .up, samples: samples, windowEnd: 1.0) == .ok)
+    }
+
+    @Test func halfAndHalfFallsToTheLastSample() {
+        let rising = [measured(.crouching, index: 0.8, at: 0.9), measured(.standing, index: 0.1, at: 1.0)]
+        #expect(Judge.verdict(expected: .up, samples: rising, windowEnd: 1.0) == .ok)
+        let falling = [measured(.standing, index: 0.1, at: 0.9), measured(.crouching, index: 0.8, at: 1.0)]
+        #expect(Judge.verdict(expected: .up, samples: falling, windowEnd: 1.0) == .wrong)
+    }
+
+    @Test func assessmentReportsWhatWasMeasured() {
+        let result = Judge.assess(expected: .up, samples: [measured(.standing, index: 0.36)], windowEnd: 1.0)
+        #expect(result.verdict == .wrong)
+        #expect(result.crouchIndex == 0.36)
+        #expect(result.posture == .standing)
+    }
+
+    @Test func toleranceChangesHowCompleteTheMoveMustBe() {
+        let sample = [measured(.standing, index: 0.33)]
+        #expect(Judge.verdict(expected: .up, samples: sample, windowEnd: 1.0, rules: Tolerance.pequenos.rules) == .ok)
+        #expect(Judge.verdict(expected: .up, samples: sample, windowEnd: 1.0, rules: Tolerance.normal.rules) == .wrong)
+        #expect(Judge.verdict(expected: .up, samples: sample, windowEnd: 1.0, rules: Tolerance.rigido.rules) == .wrong)
+    }
 }

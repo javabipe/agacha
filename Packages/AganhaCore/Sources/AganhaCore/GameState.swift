@@ -49,6 +49,8 @@ public struct GameResult: Sendable, Equatable {
 public struct RoundResult: Sendable, Equatable {
     public let command: Command
     public let verdicts: [ChildSlot: Verdict]
+    /// O que o juiz mediu de cada um (índice de agachamento, postura).
+    public let details: [ChildSlot: Judge.Assessment]
     /// Quem errou nesta rodada (pode continuar na partida se ainda tiver erros sobrando).
     public let wrong: [ChildSlot]
     public let eliminated: [ChildSlot]
