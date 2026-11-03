@@ -70,7 +70,7 @@ public enum GameReducer {
 
     private static func openWindow(_ state: inout GameState, audioStart: Double) -> [GameEffect] {
         guard case let .announcing(command) = state.phase else { return [] }
-        let opens = audioStart + windowOpensAfter
+        let opens = audioStart + windowOpensAfter + (state.config?.displayDelay ?? 0)
         let closes = opens + Double(command.windowMs) / 1000
         state.phase = .window(command, opensAt: opens, closesAt: closes)
         return [.scheduleWindowClose(at: closes)]

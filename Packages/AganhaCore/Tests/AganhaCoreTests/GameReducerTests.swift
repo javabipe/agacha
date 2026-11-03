@@ -56,6 +56,18 @@ import Testing
         #expect(effects == [.scheduleWindowClose(at: closes)])
     }
 
+    @Test func displayDelayPushesTheWindowLater() {
+        var state = GameState()
+        GameReducer.reduce(&state, .start(GameConfig(slots: [0, 1], seed: 1, displayDelay: 2)))
+        GameReducer.reduce(&state, .countdownFinished)
+        GameReducer.reduce(&state, .commandAudioStarted(at: 5))
+        guard case let .window(command, opens, closes) = state.phase else { Issue.record("fase"); return }
+        #expect(abs(opens - 7.3) < 1e-9)
+        #expect(abs(closes - (7.3 + Double(command.windowMs) / 1000)) < 1e-9)
+        #expect(GameConfig(slots: [0, 1], seed: 1, displayDelay: 99).displayDelay == 10)
+        #expect(GameConfig(slots: [0, 1], seed: 1, displayDelay: -1).displayDelay == 0)
+    }
+
     @Test func everyoneCorrectKeepsEveryoneAndScores() {
         var state = started(config())
         playRound(&state)

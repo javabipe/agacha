@@ -33,6 +33,11 @@ struct MenuView: View {
                         Toggle("Perguntar o nome de cada jogador", isOn: $loop.settings.askNames)
                             .font(.headline)
                             .foregroundStyle(Color.aganhaCream)
+                        Stepper(value: $loop.settings.tvDelay, in: 0...5, step: 0.5) {
+                            Text("Atraso da TV: \(loop.settings.tvDelay.formatted(.number.precision(.fractionLength(1)))) s")
+                                .font(.headline)
+                                .foregroundStyle(Color.aganhaCream)
+                        }
                         Toggle("Replay em vídeo do erro (apagado em seguida)", isOn: $loop.settings.recordReplay)
                             .font(.headline)
                             .foregroundStyle(Color.aganhaCream)

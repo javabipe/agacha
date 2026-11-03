@@ -74,6 +74,18 @@ struct TVHelpView: View {
                     Text("Este botão funciona como o do YouTube e, para um app de jogo, costuma mandar só o som para a TV "
                          + "(em algumas TVs, nem isso). Para ver a imagem, use o Espelhamento de Tela acima.")
                 }
+                Section {
+                    Text("Apps como AirBeamTV espelham o iPad em TVs Samsung pela rede Wi-Fi. "
+                         + "Inicie o espelhamento nele e depois abra o Agacha.")
+                    Text("Eles têm atraso de cerca de 1 a 3 segundos. Ajuste \"Atraso da TV\" no menu (comece com 2 s): "
+                         + "os prazos de reação passam a contar depois desse atraso.")
+                    Text("O som sai no iPad e na TV (atrasado): deixe o volume do iPad no mínimo e use o som da TV.")
+                } header: {
+                    Text("Se a TV não aceita AirPlay")
+                } footer: {
+                    Text("Teste antes de contar com isso: o atraso pode atrapalhar a brincadeira, "
+                         + "e nem todo app deixa a câmera funcionar ao mesmo tempo.")
+                }
                 Section("Sem AirPlay?") {
                     Text("Um cabo ou adaptador USB-C para HDMI espelha o iPad na TV sem depender de rede.")
                 }

@@ -10,6 +10,8 @@ struct GameSettings: Equatable {
     var maxErrors = 1
     /// Replay em vídeo da rodada (gravado só por alguns segundos e apagado em seguida).
     var recordReplay = true
+    /// Atraso da TV espelhada por um app (s); os prazos de reação começam depois dele.
+    var tvDelay = 0.0
 }
 
 /// Orientação falada e escrita na tela Posicionar.

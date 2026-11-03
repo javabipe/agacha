@@ -9,10 +9,12 @@ public struct GameConfig: Sendable, Equatable {
     public var rules: JudgeRules
     /// Quantos erros cada jogador pode cometer; ao chegar neste número, sai da partida.
     public var maxErrors: Int
+    /// Atraso (s) entre o iPad e o que os jogadores veem/ouvem (TV espelhada por um app). Adia a janela de julgamento.
+    public var displayDelay: Double
 
     public init(slots: [ChildSlot], difficulty: Difficulty = .sapeca, tolerance: Tolerance = .normal,
                 commandSet: CommandSet = .classic, seed: UInt64, maxAbsentStreak: Int = 3,
-                rules: JudgeRules = JudgeRules(), maxErrors: Int = 1) {
+                rules: JudgeRules = JudgeRules(), maxErrors: Int = 1, displayDelay: Double = 0) {
         self.slots = slots
         self.difficulty = difficulty
         self.tolerance = tolerance
@@ -21,6 +23,7 @@ public struct GameConfig: Sendable, Equatable {
         self.maxAbsentStreak = maxAbsentStreak
         self.rules = rules
         self.maxErrors = max(1, maxErrors)
+        self.displayDelay = min(max(0, displayDelay), 10)
     }
 }
 

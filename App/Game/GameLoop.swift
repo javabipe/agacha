@@ -132,7 +132,7 @@ final class GameLoop {
         stage = .playing
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
-                                maxErrors: settings.maxErrors)
+                                maxErrors: settings.maxErrors, displayDelay: settings.tvDelay)
         if settings.recordReplay { recorder.start() }
         send(.start(config))
     }
