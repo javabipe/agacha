@@ -117,10 +117,12 @@ public struct TVState: Codable, Equatable, Sendable {
     public var score: Score?
     /// Fim de partida: quem ganhou (dança da vitória); os outros choram. nil = sem animação.
     public var winners: [String]?
+    /// Quem apresenta: `tia` ou `tio` (o mesmo desenho dos jogadores).
+    public var host: String?
 
     public init(screen: String, word: String? = nil, background: String? = nil, gesture: String? = nil, trick: Bool = false,
                 banner: String? = nil, message: String? = nil, players: [Player] = [],
-                replay: Replay? = nil, note: String? = nil, score: Score? = nil, winners: [String]? = nil) {
+                replay: Replay? = nil, note: String? = nil, score: Score? = nil, winners: [String]? = nil, host: String? = nil) {
         self.screen = screen
         self.word = word
         self.background = background
@@ -133,6 +135,7 @@ public struct TVState: Codable, Equatable, Sendable {
         self.note = note
         self.score = score
         self.winners = winners
+        self.host = host
     }
 
     public func json() -> Data {

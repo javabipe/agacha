@@ -11,6 +11,7 @@ struct GameOverView: View {
     var solo: SoloSummary?
     /// Modo pontuação: moedas e tempos de cada jogador, do primeiro ao último.
     var scoreLines: [ScoreLine]?
+    var onShare: (() -> Void)?
     let onPlayAgain: () -> Void
     let onMenu: () -> Void
 
@@ -119,16 +120,29 @@ struct GameOverView: View {
     }
 
     private var buttons: some View {
-        HStack(spacing: 12) {
-            Button("Menu", action: onMenu).buttonStyle(.bordered)
-            Button(action: onPlayAgain) {
-                Text(solo == nil ? "Jogar de novo" : "Treinar de novo").font(.title2.weight(.heavy)).frame(maxWidth: .infinity)
+        VStack(spacing: 12) {
+            if let onShare {
+                Button(action: onShare) {
+                    Label("Compartilhar momento", systemImage: "square.and.arrow.up")
+                        .font(.title3.weight(.heavy))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(hex: "#DD2A7B"))
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color(hex: "#36C9A6"))
+            HStack(spacing: 12) { menuAndAgain }
         }
         .controlSize(.large)
         .frame(maxWidth: 520)
+    }
+
+    @ViewBuilder private var menuAndAgain: some View {
+        Button("Menu", action: onMenu).buttonStyle(.bordered)
+        Button(action: onPlayAgain) {
+            Text(solo == nil ? "Jogar de novo" : "Treinar de novo").font(.title2.weight(.heavy)).frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(Color(hex: "#36C9A6"))
     }
 }
 

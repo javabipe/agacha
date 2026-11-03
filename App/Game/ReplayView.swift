@@ -23,7 +23,7 @@ struct EliminatedView: View {
                 HStack(alignment: .top) {
                     title
                     Spacer()
-                    GameCard(command: info.result.command, commandSet: commandSet)
+                    GameCard(command: info.result.command, commandSet: commandSet, host: loop.settings.host)
                 }
                 Spacer()
                 panel
@@ -130,6 +130,7 @@ struct EliminatedView: View {
 private struct GameCard: View {
     let command: Command
     let commandSet: CommandSet
+    let host: HostStyle
 
     var body: some View {
         VStack(spacing: 4) {
@@ -139,7 +140,7 @@ private struct GameCard: View {
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
                 .foregroundStyle(.white)
-            TiaView(gesture: command.gesture)
+            HostView(gesture: command.gesture, host: host)
                 .frame(width: 110, height: 110)
             if command.isTrick {
                 Text("Truque!").font(.caption.weight(.bold)).foregroundStyle(.white)

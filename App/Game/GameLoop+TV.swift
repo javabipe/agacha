@@ -72,6 +72,7 @@ extension GameLoop {
 
     func tvState() -> TVState {
         var tvState = baseTVState()
+        tvState.host = settings.host.rawValue
         if stage == .playing, let config = state.config, config.mode == .score {
             let entries = config.slots.map { slot -> TVState.ScoreEntry in
                 let player = state.players[slot]

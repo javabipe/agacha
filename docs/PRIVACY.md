@@ -35,3 +35,4 @@
 - Nada disso sai da rede local e nada é gravado. Os avatares enviados à TV continuam sendo só posições do corpo.
 - **Pendente antes da App Store:** imagem de crianças na rede local, mesmo com código, precisa constar na política de privacidade e ser reavaliada para a categoria Kids (por exemplo, exigir parental gate para ligar).
 - O **replay** também vai para a TV (quadros JPEG dos últimos ~4 s), só com o mesmo código da câmera e só enquanto o replay está na tela. Os quadros ficam apenas na memória do app e são descartados quando a rodada segue.
+- **Compartilhar nas redes (futuro):** hoje é só simulação. Quando existir: portão para adultos antes de qualquer envio; vídeo só de avatares por padrão (sem rostos); imagem real das crianças apenas com opção explícita e consentimento dos responsáveis; ver `docs/SOCIAL.md`.

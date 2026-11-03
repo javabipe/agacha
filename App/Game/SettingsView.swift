@@ -1,29 +1,30 @@
 import AganhaCore
 import SwiftUI
 
-struct MenuView: View {
+/// Todos os ajustes (que antes lotavam a tela inicial). Ficam guardados no aparelho.
+struct SettingsView: View {
     @Bindable var loop: GameLoop
-    /// `true` para o treino solo.
-    let onPlay: (Bool) -> Void
     let onDiagnostic: () -> Void
+    let onClose: () -> Void
     @State private var mirroring = MirroringMonitor()
     @State private var showTV = false
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
-            ScrollView {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Ajustes").font(.system(size: 34, weight: .black, design: .rounded)).foregroundStyle(Color.aganhaYellow)
+                    Spacer()
+                    Button("Pronto", action: onClose)
+                        .font(.title3.weight(.bold))
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color(hex: "#36C9A6"))
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                ScrollView {
                 VStack(spacing: 28) {
-                    VStack(spacing: 4) {
-                        Text("Aganha!")
-                            .font(.system(size: 72, weight: .black, design: .rounded))
-                            .foregroundStyle(Color.aganhaYellow)
-                        Text("A brincadeira do morto-vivo")
-                            .font(.title3)
-                            .foregroundStyle(Color.aganhaCream)
-                    }
-                    .padding(.top, 40)
-
                     VStack(alignment: .leading, spacing: 20) {
                         picker("Modo", selection: $loop.settings.mode, options: GameMode.allCases, label: Self.name)
                         if loop.settings.mode == .score {
@@ -32,6 +33,12 @@ struct MenuView: View {
                         picker("Nível", selection: $loop.settings.difficulty, options: Difficulty.allCases, label: Self.name)
                         picker("Tempo para reagir", selection: $loop.settings.tolerance, options: Tolerance.allCases, label: Self.name)
                         picker("Comandos", selection: $loop.settings.commandSet, options: [.classic, .school], label: Self.name)
+                        picker("Quem apresenta", selection: $loop.settings.host, options: HostStyle.allCases) { $0.title }
+                        if loop.settings.host == .tio {
+                            Text("A voz gravada ainda é a da tia; a do tio vem depois.")
+                                .font(.footnote)
+                                .foregroundStyle(Color.aganhaCream.opacity(0.7))
+                        }
                         if loop.settings.mode == .elimination {
                             picker("Erros permitidos por jogador", selection: $loop.settings.maxErrors, options: [1, 2, 3, 5, 99]) {
                                 switch $0 {
@@ -61,24 +68,6 @@ struct MenuView: View {
                     .padding(20)
                     .background(.black.opacity(0.3), in: .rect(cornerRadius: 20))
 
-                    Button { onPlay(false) } label: {
-                        Text("Jogar")
-                            .font(.system(size: 34, weight: .heavy, design: .rounded))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 18)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color(hex: "#36C9A6"))
-
-                    Button { onPlay(true) } label: {
-                        Label("Treino solo (1 jogador)", systemImage: "person.fill")
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(Color.aganhaCream)
-
                     tvControls
 
                     Button(mirroring.isMirroring ? "Ver na TV (conectada)" : "Ver na TV", systemImage: "tv") { showTV = true }
@@ -90,6 +79,7 @@ struct MenuView: View {
                 .frame(maxWidth: 560)
                 .padding(24)
                 .frame(maxWidth: .infinity)
+                }
             }
         }
         .sheet(isPresented: $showTV) { TVHelpView(monitor: mirroring, tv: loop.tv) }

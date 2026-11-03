@@ -26,7 +26,9 @@ final class GameLoop {
     static let processingDelay = 0.12
     static let handsUpHold = 0.8
 
-    var settings = GameSettings()
+    var settings = GameSettings.load() {
+        didSet { settings.save() }
+    }
     private(set) var stage: Stage = .idle
     private(set) var state = GameState()
     var analysis: FrameAnalysis?

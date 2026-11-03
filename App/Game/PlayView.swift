@@ -19,12 +19,12 @@ struct PlayView: View {
                     Spacer(minLength: 0)
                     if landscape {
                         HStack(spacing: 24) {
-                            TiaView(gesture: loop.shownCommand?.gesture)
+                            HostView(gesture: loop.shownCommand?.gesture, host: loop.settings.host)
                                 .frame(maxWidth: geo.size.width * 0.34)
                             word
                         }
                     } else {
-                        TiaView(gesture: loop.shownCommand?.gesture)
+                        HostView(gesture: loop.shownCommand?.gesture, host: loop.settings.host)
                             .frame(maxHeight: geo.size.height * 0.4)
                         word
                     }

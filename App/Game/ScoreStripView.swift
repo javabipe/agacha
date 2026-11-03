@@ -21,7 +21,7 @@ struct ScoreStripView: View {
                 Circle().fill(SlotPalette.color(for: slot)).frame(width: 14, height: 14)
                 Text(loop.name(for: slot)).font(.headline)
             }
-            Text("🪙 \(player?.coins ?? 0)").font(.title2.weight(.heavy))
+            CoinLabel(count: player?.coins ?? 0).font(.title2.weight(.heavy))
             Text(summary(score))
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(color(score?.tier))

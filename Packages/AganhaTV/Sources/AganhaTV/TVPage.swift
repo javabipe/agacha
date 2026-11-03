@@ -60,14 +60,7 @@ enum TVPage {
     <img id="cam" alt="">
     <canvas id="stage"></canvas>
     <div id="center">
-      <svg id="tia" viewBox="0 0 200 200">
-        <line id="armL" x1="70" y1="100" x2="70" y2="165" stroke="#FFD9B8" stroke-width="16" stroke-linecap="round"/>
-        <line id="armR" x1="130" y1="100" x2="130" y2="165" stroke="#FFD9B8" stroke-width="16" stroke-linecap="round"/>
-        <rect x="55" y="82" width="90" height="100" rx="26" fill="#8E7BFF"/>
-        <circle cx="100" cy="52" r="34" fill="#FFD9B8"/>
-        <circle cx="88" cy="48" r="4" fill="#000"/><circle cx="112" cy="48" r="4" fill="#000"/>
-        <path d="M86 64 Q100 76 114 64" stroke="#000" stroke-width="4" fill="none" stroke-linecap="round"/>
-      </svg>
+      <canvas id="tia"></canvas>
       <div><div id="word"></div><div id="banner"></div></div>
     </div>
     <div id="note"></div>
@@ -184,6 +177,7 @@ enum TVPage {
       if (ref && nose && span > 0) { yaw = clamp(((nose[0] - ref[0]) * cs + (nose[1] - ref[1]) * sn) / span, -1, 1); }
       g.save(); g.translate(cx, cy); g.rotate(roll);
       var fx = yaw * r * 0.42, squeeze = 1 - 0.3 * Math.abs(yaw);
+      if (f.host === 'tia') { oval(g, -r * 1.0, r * 0.75, r * 0.3, r * 1.0, 0, '#6B3F2A', null, 0); oval(g, r * 1.0, r * 0.75, r * 0.3, r * 1.0, 0, '#6B3F2A', null, 0); }
       // orelhas (a que vira para trás encolhe)
       bead(g, [-r * 0.98, r * 0.05], r * 0.2 * (1 - 0.8 * Math.max(0, -yaw)), SKIN, SKIN_EDGE, ew);
       bead(g, [r * 0.98, r * 0.05], r * 0.2 * (1 - 0.8 * Math.max(0, yaw)), SKIN, SKIN_EDGE, ew);
@@ -193,7 +187,7 @@ enum TVPage {
       skin.addColorStop(0, '#FFEBD6'); skin.addColorStop(1, SKIN);
       g.fillStyle = skin; g.beginPath(); g.arc(0, 0, r, 0, 6.2832); g.fill();
       // cabelo: calota com franja, acompanha a virada
-      g.fillStyle = hair; g.beginPath();
+      g.fillStyle = f.host === 'tia' ? '#6B3F2A' : (f.host === 'tio' ? '#3B2A22' : hair); g.beginPath();
       g.arc(fx * 0.3, 0, r * 1.04, 3.3, 6.12);
       g.quadraticCurveTo(fx * 0.3 + r * 0.55, -r * 0.3, fx * 0.3 + r * 0.1, -r * 0.5);
       g.quadraticCurveTo(fx * 0.3 - r * 0.35, -r * 0.7, fx * 0.3 - r * 1.0, -r * 0.3);
@@ -251,6 +245,14 @@ enum TVPage {
       } else {
         g.beginPath(); g.arc(fx, r * 0.2, r * 0.3, 0.4, 2.74); g.stroke();
       }
+      if (f.host === 'tio') {
+        g.strokeStyle = '#3B2A22'; g.lineWidth = Math.max(1.5, r * 0.06);
+        for (i = -1; i <= 1; i += 2) { g.beginPath(); g.arc(fx + i * ex, ey, r * 0.26, 0, 6.2832); g.stroke(); }
+        g.beginPath(); g.moveTo(fx - ex + r * 0.26, ey); g.lineTo(fx + ex - r * 0.26, ey); g.stroke();
+        g.lineWidth = r * 0.1; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(fx - r * 0.3, r * 0.34); g.quadraticCurveTo(fx - r * 0.15, r * 0.22, fx, r * 0.3);
+        g.quadraticCurveTo(fx + r * 0.15, r * 0.22, fx + r * 0.3, r * 0.34); g.stroke();
+      }
       if (f.crown) {
         var cy0 = -r * 0.88;
         g.fillStyle = '#FFC83D'; g.strokeStyle = '#B5791A'; g.lineWidth = Math.max(1.5, r * 0.07); g.lineJoin = 'round';
@@ -272,7 +274,7 @@ enum TVPage {
       function P(k){ var p = f.joints[k]; return p ? [ox + p[0] * bw, oy + p[1] * bh] : null; }
       var ls = P('ls'), rs = P('rs'), lh = P('lh'), rh = P('rh'), nose = P('n');
       var u = (ls && rs) ? Math.abs(ls[0] - rs[0]) : ((lh && rh) ? Math.abs(lh[0] - rh[0]) * 1.2 : bh * 0.08);
-      u = clamp(u, bh * 0.045, bh * 0.22);
+      u = f.u ? f.u * bh : clamp(u, bh * 0.045, bh * 0.22);
       var shirt = f.color, shirtEdge = shade(f.color, 0.42), pants = shade(f.color, 0.55), pantsEdge = shade(f.color, 0.3);
       var glow = 'rgba(255,255,255,0.28)', hair = shade(f.color, 0.42), ew = Math.max(1.5, u * 0.09);
       // Sem ombros à vista, usa o nariz como referência do tronco.
@@ -345,8 +347,9 @@ enum TVPage {
 
       // cabeça e plaquinha com o nome
       if (nose) {
-        var r = u * 0.74;
+        var r = f.r ? f.r * bh : u * 0.74;
         var c = drawHead(g, f, { nose: nose, eyeL: eyes[0], eyeR: eyes[1], earL: ears[0], earR: ears[1] }, r, hair, ew, raised);
+        if (f.host) { g.globalAlpha = 1; return; }
         g.font = 'bold ' + Math.round(bh * 0.06) + 'px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
         var label = f.name + (f.mood === 'win' ? ' ★' : (f.mood === 'sad' ? '' : (f.ready ? ' ✓' : ' !'))), tw = g.measureText(label).width, ph = bh * 0.085;
         var py = Math.max(oy + ph * 0.1, c[1] - r * 1.15 - ph * 1.25);
@@ -409,10 +412,35 @@ enum TVPage {
     }
 
     // ---------- tela
-    function setArms(g){
-      var up = (g === 'up'), l = up ? 150 : 18, r = up ? -150 : -18;
-      el('armL').setAttribute('transform', 'rotate(' + l + ' 70 100)');
-      el('armR').setAttribute('transform', 'rotate(' + r + ' 130 100)');
+    // Apresentador (tia ou tio): o mesmo desenho dos jogadores, só o busto; os braços sobem em "vivo" e descem em "morto".
+    var host = { kind: 'tia', raise: 0, target: 0, bounce: 0, last: null, running: false };
+    function hostFrame(){
+      var c = el('tia');
+      host.raise += (host.target - host.raise) * 0.3; host.bounce *= 0.88;
+      if (c.clientWidth) {
+        var scale = Math.min(2, Math.max(window.devicePixelRatio || 1, QUALITY)), W = c.clientWidth;
+        if (c.width !== Math.round(W * scale)) { c.width = c.height = Math.round(W * scale); }
+        var g = c.getContext('2d'), j = {}, sy = 0.72 - host.bounce * 0.03, b = host.bounce * 0.03;
+        function lerpA(x, y){ return x + (y - x) * host.raise; }
+        var up = lerpA(0.3, 2.45), fo = lerpA(0.12, 2.9);
+        j.n = [0.5, 0.42 - b]; j.ley = [0.44, 0.395 - b]; j.rey = [0.56, 0.395 - b]; j.lea = [0.385, 0.405 - b]; j.rea = [0.615, 0.405 - b];
+        j.ls = [0.30, sy]; j.rs = [0.70, sy];
+        var sides = [['l', -1, 0.30], ['r', 1, 0.70]];
+        for (var i = 0; i < 2; i++) {
+          var ex = sides[i][2] + sides[i][1] * Math.sin(up) * 0.23, ey = sy + Math.cos(up) * 0.23;
+          j[sides[i][0] + 'e'] = [ex, ey]; j[sides[i][0] + 'w'] = [ex + sides[i][1] * Math.sin(fo) * 0.2, ey + Math.cos(fo) * 0.2];
+        }
+        g.setTransform(scale, 0, 0, scale, 0, 0); g.clearRect(0, 0, W, W);
+        drawAvatar(g, { name: '', color: host.kind === 'tio' ? '#4D9DE0' : '#8E7BFF', ready: true, joints: j, u: 0.40, r: 0.2, host: host.kind }, 0, 0, W, W);
+      }
+      if (Math.abs(host.target - host.raise) > 0.004 || host.bounce > 0.01) { nextFrame(hostFrame); } else { host.running = false; }
+    }
+    function setArms(g, kind){
+      host.kind = kind || host.kind;
+      host.target = (g === 'up') ? 1 : 0;
+      if (g && g !== host.last) { host.bounce = 1; }
+      host.last = g || null;
+      if (!host.running) { host.running = true; nextFrame(hostFrame); }
     }
     // Replay (só com o código de acesso na URL): baixa os quadros e os toca em ciclo cobrindo a tela do resultado.
     // Só troca o layout quando todos os quadros chegaram; até lá a tela normal do resultado continua.
@@ -483,7 +511,7 @@ enum TVPage {
       var showCam = positioning && camCode;
       if (showCam && !cam.getAttribute('data-on')) { cam.src = '/camera.mjpg?t=' + camCode; cam.setAttribute('data-on', '1'); }
       cam.style.display = (showCam && !video) ? 'block' : 'none';
-      setArms(play ? s.gesture : null);
+      setArms(play ? s.gesture : null, s.host);
       var html = '';
       for (var i = 0; i < (s.players || []).length; i++) {
         var p = s.players[i];
