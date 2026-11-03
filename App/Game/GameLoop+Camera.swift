@@ -12,9 +12,11 @@ extension GameLoop {
         defer { cameraStarting = false }
         let pipeline = pipeline
         let recorder = recorder
+        let streamer = tv.cameraStreamer
         let loop = self
         camera.onFrame = { buffer, timestamp in
             recorder.append(buffer, at: timestamp)
+            streamer.offer(buffer, at: timestamp)
             let analysis = pipeline.process(pixelBuffer: buffer, timestamp: timestamp)
             Task { @MainActor in loop.ingest(analysis) }
         }
@@ -39,6 +41,8 @@ extension GameLoop {
 
     func ingest(_ analysis: FrameAnalysis) {
         self.analysis = analysis
+        tv.cameraStreamer.setEnabled(tv.cameraOn && stage == .positioning)
+        publishTVPose(analysis)
         switch stage {
         case .idle:
             break

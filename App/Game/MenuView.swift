@@ -105,6 +105,18 @@ struct MenuView: View {
                 Toggle("Som na TV", isOn: Binding(get: { loop.tv.soundOnTV }, set: { loop.tv.soundOnTV = $0 }))
                     .font(.headline)
                     .foregroundStyle(Color.aganhaCream)
+                Toggle("Câmera na TV no posicionamento (teste)", isOn: Binding(get: { loop.tv.cameraOn }, set: { loop.tv.setCamera($0) }))
+                    .font(.headline)
+                    .foregroundStyle(Color.aganhaCream)
+                if let cameraAddress = loop.tv.cameraAddress {
+                    Text("Para ver a câmera, digite na TV (com o código):")
+                        .font(.callout)
+                        .foregroundStyle(Color.aganhaCream.opacity(0.85))
+                    Text(cameraAddress)
+                        .font(.system(size: 24, weight: .heavy, design: .monospaced))
+                        .foregroundStyle(Color.orange)
+                        .textSelection(.enabled)
+                }
             }
             if let error = loop.tv.errorMessage {
                 Text(error).font(.callout).foregroundStyle(.orange)

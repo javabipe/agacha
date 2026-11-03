@@ -45,22 +45,28 @@ extension GameLoop {
         }
     }
 
-    /// Bonecos de palito dos jogadores vistos agora (linhas e um ponto da cabeça; nunca a imagem).
-    private func tvFigures() -> (aspect: Double?, figures: [TVState.Figure]) {
-        guard let analysis, analysis.imageSize.height > 0 else { return (nil, []) }
+    /// Posição dos jogadores para os avatares da TV (só juntas do corpo; nunca a imagem). No máximo ~10 vezes por segundo.
+    func publishTVPose(_ analysis: FrameAnalysis) {
+        guard tv.isOn, tv.connectedScreens > 0, stage != .idle, analysis.imageSize.height > 0 else { return }
+        let now = Self.now()
+        guard now - lastTVPose >= 0.1 else { return }
+        lastTVPose = now
         func rounded(_ value: Double) -> Double { (value * 1000).rounded() / 1000 }
+        let keys: [JointName: String] = [
+            .nose: "n", .leftShoulder: "ls", .rightShoulder: "rs", .leftElbow: "le", .rightElbow: "re",
+            .leftWrist: "lw", .rightWrist: "rw", .leftHip: "lh", .rightHip: "rh",
+            .leftKnee: "lk", .rightKnee: "rk", .leftAnkle: "la", .rightAnkle: "ra"
+        ]
         let figures = analysis.people.compactMap { person -> TVState.Figure? in
             guard let slot = person.slot else { return nil }
-            let joints = person.skeleton.joints
-            let bones = Skeleton.bones.compactMap { first, second -> [Double]? in
-                guard let a = joints[first], let b = joints[second], a.confidence > 0.2, b.confidence > 0.2 else { return nil }
-                return [rounded(a.x), rounded(a.y), rounded(b.x), rounded(b.y)]
+            var joints: [String: [Double]] = [:]
+            for (joint, key) in keys {
+                if let value = person.skeleton.joints[joint], value.confidence > 0.2 { joints[key] = [rounded(value.x), rounded(value.y)] }
             }
-            let head = joints[.nose].flatMap { $0.confidence > 0.2 ? [rounded($0.x), rounded($0.y)] : nil }
-            let ready = report.people.first { $0.slot == slot }?.isReady ?? false
-            return TVState.Figure(name: name(for: slot), color: SlotColors.hex(slot), ready: ready, bones: bones, head: head)
+            let ready = stage == .playing || (report.people.first { $0.slot == slot }?.isReady ?? false)
+            return TVState.Figure(name: name(for: slot), color: SlotColors.hex(slot), ready: ready, joints: joints)
         }
-        return (analysis.imageSize.width / analysis.imageSize.height, figures)
+        tv.publishPose(TVPose(aspect: analysis.imageSize.width / analysis.imageSize.height, figures: figures))
     }
 
     func tvState() -> TVState {
@@ -74,8 +80,7 @@ extension GameLoop {
                                detail: person.isReady ? "✓" : "!")
             }
             let banner = bannerText.split(separator: "\n").first.map(String.init)
-            let drawing = tvFigures()
-            return TVState(screen: "positioning", banner: banner, players: players, aspect: drawing.aspect, figures: drawing.figures)
+            return TVState(screen: "positioning", banner: banner, players: players)
         case .playing:
             let players = (state.config?.slots ?? []).map { slot in
                 TVState.Player(name: name(for: slot), color: SlotColors.hex(slot),

@@ -2,6 +2,12 @@ import Foundation
 
 /// O que a TV mostra agora. É só texto e cores (nada de imagem da câmera): a página da TV desenha tudo.
 public struct TVState: Codable, Equatable, Sendable {
+    fileprivate nonisolated(unsafe) static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]   // ordem estável das chaves
+        return encoder
+    }()
+
     public struct Player: Codable, Equatable, Sendable {
         public var name: String
         /// `#RRGGBB`
@@ -18,23 +24,21 @@ public struct TVState: Codable, Equatable, Sendable {
         }
     }
 
-    /// Um jogador como boneco de palito (só linhas e um ponto: nada de imagem).
+    /// Um jogador como avatar: só as posições das juntas do corpo (nada de imagem).
     public struct Figure: Codable, Equatable, Sendable {
         public var name: String
         public var color: String
         /// Aparece inteiro no quadro (cabeça aos pés).
         public var ready: Bool
-        /// Segmentos `[x1, y1, x2, y2]` em 0...1, origem no canto superior esquerdo.
-        public var bones: [[Double]]
-        /// Posição da cabeça `[x, y]`.
-        public var head: [Double]?
+        /// Juntas vistas: `n` nariz, `ls`/`rs` ombros, `le`/`re` cotovelos, `lw`/`rw` pulsos, `lh`/`rh` quadris,
+        /// `lk`/`rk` joelhos, `la`/`ra` tornozelos. Cada uma `[x, y]` em 0...1 (origem no canto superior esquerdo).
+        public var joints: [String: [Double]]
 
-        public init(name: String, color: String, ready: Bool, bones: [[Double]], head: [Double]? = nil) {
+        public init(name: String, color: String, ready: Bool, joints: [String: [Double]]) {
             self.name = name
             self.color = color
             self.ready = ready
-            self.bones = bones
-            self.head = head
+            self.joints = joints
         }
     }
 
@@ -51,13 +55,9 @@ public struct TVState: Codable, Equatable, Sendable {
     /// Resultado ("Paulo errou!", "Arthur venceu!").
     public var message: String?
     public var players: [Player]
-    /// Largura ÷ altura do que a câmera vê (para desenhar os bonecos na proporção certa).
-    public var aspect: Double?
-    public var figures: [Figure]
 
     public init(screen: String, word: String? = nil, background: String? = nil, gesture: String? = nil, trick: Bool = false,
-                banner: String? = nil, message: String? = nil, players: [Player] = [], aspect: Double? = nil,
-                figures: [Figure] = []) {
+                banner: String? = nil, message: String? = nil, players: [Player] = []) {
         self.screen = screen
         self.word = word
         self.background = background
@@ -66,11 +66,25 @@ public struct TVState: Codable, Equatable, Sendable {
         self.banner = banner
         self.message = message
         self.players = players
+    }
+
+    public func json() -> Data {
+        (try? Self.encoder.encode(self)) ?? Data("{}".utf8)
+    }
+}
+
+/// Posição dos jogadores agora (muda várias vezes por segundo, por isso vai separada do estado do jogo).
+public struct TVPose: Codable, Equatable, Sendable {
+    /// Largura ÷ altura do que a câmera vê (para desenhar na proporção certa).
+    public var aspect: Double?
+    public var figures: [TVState.Figure]
+
+    public init(aspect: Double? = nil, figures: [TVState.Figure] = []) {
         self.aspect = aspect
         self.figures = figures
     }
 
     public func json() -> Data {
-        (try? JSONEncoder().encode(self)) ?? Data("{}".utf8)
+        (try? TVState.encoder.encode(self)) ?? Data("{}".utf8)
     }
 }

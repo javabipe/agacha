@@ -27,3 +27,10 @@
 - Na versão de teste não há código de acesso: qualquer aparelho da mesma rede que souber o endereço pode ver o estado do jogo (inclusive nomes). Antes da App Store, adicionar um código na URL.
 - O iOS pede a permissão de "Rede Local" na primeira vez (`NSLocalNetworkUsageDescription`).
 - Na tela de posicionamento, a TV recebe também **bonecos de palito**: linhas e um ponto da cabeça de cada jogador, com nome e cor. Não é imagem nem vídeo e não permite reconhecer o rosto.
+
+## Câmera na TV (teste, desligada por padrão)
+
+- Com "Câmera na TV no posicionamento" ligado, o **vídeo da câmera** (640 px, sem som) é enviado pela rede Wi-Fi da casa para o navegador da TV, **somente na tela de posicionamento**. Para de enviar ao começar a partida e ao desligar a opção ou fechar o app.
+- O vídeo só abre para quem digitar o **endereço com o código** de 4 dígitos mostrado no iPad. O código muda a cada vez que a opção é ligada. É uma proteção simples contra acesso por engano, não criptografia: o tráfego é HTTP, sem TLS, dentro da rede local.
+- Nada disso sai da rede local e nada é gravado. Os avatares enviados à TV continuam sendo só posições do corpo.
+- **Pendente antes da App Store:** imagem de crianças na rede local, mesmo com código, precisa constar na política de privacidade e ser reavaliada para a categoria Kids (por exemplo, exigir parental gate para ligar).

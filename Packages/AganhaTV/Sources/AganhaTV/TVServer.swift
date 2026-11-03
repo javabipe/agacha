@@ -14,17 +14,66 @@ public final class TVServer: @unchecked Sendable {
     private var listener: NWListener?
     private var streams: [ObjectIdentifier: NWConnection] = [:]
     private var latestState = TVState(screen: "menu").json()
+    private var latestPose = TVPose().json()
     private var audio: [String: Data] = [:]
     private var keepAlive: DispatchSourceTimer?
     private var onStreamsChanged: (@Sendable (Int) -> Void)?
     private var addedAudioOrder: [String] = []
+    private var cameraToken: String?
+    private var cameraViewers: [ObjectIdentifier: CameraViewer] = [:]
     private static let maxAddedAudio = 40
+
+    /// Uma TV vendo o vídeo da câmera. `busy` evita acumular quadros se a rede for mais lenta que a câmera.
+    private final class CameraViewer {
+        let connection: NWConnection
+        var busy = false
+
+        init(_ connection: NWConnection) {
+            self.connection = connection
+        }
+    }
 
     public init() {}
 
     /// Quantas TVs/navegadores estão conectados (para saber se vale mandar o som para lá).
     public var streamCount: Int {
         queue.sync { streams.count }
+    }
+
+    /// Quantas TVs estão vendo o vídeo da câmera agora.
+    public var cameraViewerCount: Int {
+        queue.sync { cameraViewers.count }
+    }
+
+    /// Liga o vídeo da câmera (só abre com este código na URL) ou desliga (`nil`, e derruba quem estiver vendo).
+    public func setCameraToken(_ token: String?) {
+        queue.sync {
+            cameraToken = token
+            if token == nil {
+                for viewer in cameraViewers.values { viewer.connection.cancel() }
+                cameraViewers = [:]
+            }
+        }
+    }
+
+    /// Manda um quadro JPEG a quem está vendo a câmera (quem ainda está recebendo o anterior pula este).
+    public func publishCameraFrame(_ jpeg: Data) {
+        queue.async {
+            let head = "--agachaframe\r\nContent-Type: image/jpeg\r\nContent-Length: \(jpeg.count)\r\n\r\n"
+            let part = Data(head.utf8) + jpeg + Data("\r\n".utf8)
+            for (key, viewer) in self.cameraViewers where !viewer.busy {
+                viewer.busy = true
+                viewer.connection.send(content: part, completion: .contentProcessed { [weak self] error in
+                    self?.queue.async {
+                        viewer.busy = false
+                        if error != nil {
+                            self?.cameraViewers.removeValue(forKey: key)
+                            viewer.connection.cancel()
+                        }
+                    }
+                })
+            }
+        }
     }
 
     /// Chamado (em fila de fundo) quando alguém conecta ou desconecta.
@@ -72,6 +121,8 @@ public final class TVServer: @unchecked Sendable {
             listener = nil
             for connection in streams.values { connection.cancel() }
             streams = [:]
+            for viewer in cameraViewers.values { viewer.connection.cancel() }
+            cameraViewers = [:]
         }
     }
 
@@ -81,6 +132,15 @@ public final class TVServer: @unchecked Sendable {
         queue.async {
             self.latestState = json
             self.broadcast(event: "state", data: (String(bytes: json, encoding: .utf8) ?? ""))
+        }
+    }
+
+    /// Posição dos jogadores (vai várias vezes por segundo, separada do estado).
+    public func publishPose(_ pose: TVPose) {
+        let json = pose.json()
+        queue.async {
+            self.latestPose = json
+            self.broadcast(event: "pose", data: String(bytes: json, encoding: .utf8) ?? "{}")
         }
     }
 
@@ -153,13 +213,17 @@ public final class TVServer: @unchecked Sendable {
             send(status: "405 Method Not Allowed", type: "text/plain", body: Data("só GET".utf8), on: connection)
             return
         }
-        let path = String(parts[1].split(separator: "?").first ?? "/")
+        let target = String(parts[1])
+        let path = String(target.split(separator: "?").first ?? "/")
+        let query = target.contains("?") ? String(target.split(separator: "?", maxSplits: 1).last ?? "") : ""
 
         switch path {
         case "/", "/index.html":
             send(status: "200 OK", type: "text/html; charset=utf-8", body: Data(TVPage.html.utf8), on: connection)
         case "/events":
             openStream(on: connection)
+        case "/camera.mjpg":
+            openCamera(on: connection, query: query)
         case "/state":
             send(status: "200 OK", type: "application/json", body: latestState, on: connection)
         case "/clips":
@@ -189,7 +253,9 @@ public final class TVServer: @unchecked Sendable {
     private func openStream(on connection: NWConnection) {
         let head = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-store\r\n"
             + "Connection: keep-alive\r\nAccess-Control-Allow-Origin: *\r\n\r\nretry: 1000\n\n"
-        let first = Data(head.utf8) + Data(Self.format(event: "state", data: (String(bytes: latestState, encoding: .utf8) ?? "")).utf8)
+        let first = Data(head.utf8)
+            + Data(Self.format(event: "state", data: String(bytes: latestState, encoding: .utf8) ?? "").utf8)
+            + Data(Self.format(event: "pose", data: String(bytes: latestPose, encoding: .utf8) ?? "").utf8)
         let key = ObjectIdentifier(connection)
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
@@ -209,6 +275,35 @@ public final class TVServer: @unchecked Sendable {
                 self.streams[key] = connection
                 self.notifyStreams()
             }
+        })
+    }
+
+    /// Vídeo da câmera (MJPEG): só com o código certo e com a câmera ligada no app.
+    private func openCamera(on connection: NWConnection, query: String) {
+        let code = query.split(separator: "&").first { $0.hasPrefix("t=") }.map { String($0.dropFirst(2)) }
+        guard let token = cameraToken, code == token else {
+            send(status: "403 Forbidden", type: "text/plain", body: Data("código inválido".utf8), on: connection)
+            return
+        }
+        let head = "HTTP/1.1 200 OK\r\nContent-Type: multipart/x-mixed-replace; boundary=agachaframe\r\n"
+            + "Cache-Control: no-store\r\nConnection: close\r\n\r\n"
+        let key = ObjectIdentifier(connection)
+        let viewer = CameraViewer(connection)
+        connection.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .failed, .cancelled:
+                self?.queue.async { self?.cameraViewers.removeValue(forKey: key) }
+            default:
+                break
+            }
+        }
+        connection.send(content: Data(head.utf8), completion: .contentProcessed { [weak self] error in
+            guard let self else { return }
+            if error != nil {
+                connection.cancel()
+                return
+            }
+            queue.async { self.cameraViewers[key] = viewer }
         })
     }
 

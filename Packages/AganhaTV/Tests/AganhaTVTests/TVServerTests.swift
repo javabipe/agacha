@@ -1,5 +1,6 @@
 @testable import AganhaTV
 import Foundation
+import Network
 import Testing
 
 private final class Collected: @unchecked Sendable {
@@ -92,5 +93,122 @@ private final class Collected: @unchecked Sendable {
         if let address = LocalAddress.ipv4() {
             #expect(address.split(separator: ".").count == 4)
         }
+    }
+
+    // MARK: - Câmera e posição
+
+    @Test func cameraNeedsTheRightCodeAndIsOffByDefault() async throws {
+        let (server, port) = try await start()
+        defer { server.stop() }
+        #expect(try await get(port, "/camera.mjpg").0 == 403)
+        #expect(try await get(port, "/camera.mjpg?t=1234").0 == 403)   // câmera desligada
+        server.setCameraToken("4321")
+        #expect(try await get(port, "/camera.mjpg?t=1234").0 == 403)   // código errado
+        #expect(try await get(port, "/camera.mjpg").0 == 403)
+    }
+
+    @Test func cameraFramesReachAViewerWithTheCodeAndStopWhenDisabled() async throws {
+        let (server, port) = try await start()
+        defer { server.stop() }
+        server.setCameraToken("4321")
+        let jpeg = Data([0xFF, 0xD8] + Array(repeating: 7, count: 150) + [0xFF, 0xD9])
+        // Como uma TV: abre a conexão, lê o cabeçalho e depois os quadros.
+        let client = RawClient(port: port)
+        try await client.connect()
+        client.send("GET /camera.mjpg?t=4321 HTTP/1.1\r\nHost: tv\r\n\r\n")
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(server.cameraViewerCount == 1)
+        server.publishCameraFrame(jpeg)
+        let received = try await client.read(until: jpeg, timeout: 3)
+        let frameStart = try #require(received.range(of: jpeg)).lowerBound
+        let text = String(bytes: received[..<frameStart], encoding: .utf8) ?? ""
+        #expect(text.hasPrefix("HTTP/1.1 200 OK"))
+        #expect(text.contains("multipart/x-mixed-replace; boundary=agachaframe"))
+        #expect(text.contains("--agachaframe\r\nContent-Type: image/jpeg\r\nContent-Length: \(jpeg.count)\r\n\r\n"))
+        #expect(received.range(of: jpeg) != nil)
+
+        server.setCameraToken(nil)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(server.cameraViewerCount == 0)
+        client.close()
+    }
+
+    @Test func poseGoesOnItsOwnChannelAndNewViewersGetTheLastOne() async throws {
+        let (server, port) = try await start()
+        defer { server.stop() }
+        let joints = ["n": [0.5, 0.2], "ls": [0.45, 0.3]]
+        server.publishPose(TVPose(aspect: 1.7778, figures: [.init(name: "Paulo", color: "#FFC845", ready: true, joints: joints)]))
+        try await Task.sleep(for: .milliseconds(100))
+        let url = URL(string: "http://127.0.0.1:\(port)/events")!
+        let (bytes, _) = try await URLSession.shared.bytes(from: url)
+        let collected = Collected()
+        let reader = Task {
+            for try await line in bytes.lines {
+                collected.add(line)
+                if collected.lines.contains(where: { $0.hasPrefix("data: {") && $0.contains("\"figures\"") }) { break }
+            }
+        }
+        _ = try await reader.value
+        let lines = collected.lines
+        #expect(lines.contains("event: pose"))
+        let data = try #require(lines.first { $0.hasPrefix("data: {") && $0.contains("\"figures\"") })
+        let pose = try JSONDecoder().decode(TVPose.self, from: Data(data.dropFirst(6).utf8))
+        #expect(pose.figures.first?.joints["n"] == [0.5, 0.2])
+    }
+}
+
+/// Cliente TCP simples (como o navegador da TV), para ver exatamente o que o servidor envia.
+private final class RawClient: @unchecked Sendable {
+    private let connection: NWConnection
+    private let lock = NSLock()
+    private var buffer = Data()
+
+    init(port: UInt16) {
+        connection = NWConnection(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!, using: .tcp)
+    }
+
+    func connect() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let once = Once()
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready: if once.first() { continuation.resume() }
+                case let .failed(error): if once.first() { continuation.resume(throwing: error) }
+                default: break
+                }
+            }
+            connection.start(queue: .global())
+        }
+        receiveLoop()
+    }
+
+    func send(_ text: String) {
+        connection.send(content: Data(text.utf8), completion: .contentProcessed { _ in })
+    }
+
+    func read(until marker: Data, timeout: Double) async throws -> Data {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let current = lock.withLock { buffer }
+            if current.range(of: marker) != nil { return current }
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        return lock.withLock { buffer }
+    }
+
+    func close() { connection.cancel() }
+
+    private func receiveLoop() {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            if let data { lock.withLock { buffer.append(data) } }
+            if !isComplete, error == nil { receiveLoop() }
+        }
+    }
+
+    private final class Once: @unchecked Sendable {
+        private let lock = NSLock()
+        private var done = false
+        func first() -> Bool { lock.withLock { defer { done = true }; return !done } }
     }
 }

@@ -58,6 +58,7 @@ final class GameLoop {
     let recorder = ClipRecorder()
     let tv = TVBridge()
     var lastTVPublish = 0.0
+    var lastTVPose = 0.0
     /// Resultado do último treino solo.
     var soloScore = 0
     var soloBest = 0

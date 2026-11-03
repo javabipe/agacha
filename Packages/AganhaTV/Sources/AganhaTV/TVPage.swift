@@ -11,16 +11,17 @@ enum TVPage {
     <style>
     html,body{margin:0;height:100%;overflow:hidden;background:#1B1433;color:#fff;font-family:Arial,Helvetica,sans-serif}
     #bg{position:absolute;left:0;top:0;right:0;bottom:0;background:#1B1433}
-    #center{position:absolute;left:0;right:0;top:0;bottom:20vh;display:flex;align-items:center;justify-content:center}
-    #tia{width:36vh;height:36vh;margin-right:4vw;display:none}
-    #word{font-size:26vh;font-weight:900;text-align:center;text-shadow:0 .6vh 1.2vh rgba(0,0,0,.4)}
-    #banner{font-size:11vh;font-weight:800;text-align:center;padding:0 4vw;line-height:1.1}
-    #message{position:absolute;left:0;right:0;top:3vh;text-align:center;font-size:8vh;font-weight:800;color:#FFC845}
-    #stage{position:absolute;left:0;top:17vh;width:100%;height:66vh;display:none}
-    #players{position:absolute;left:0;right:0;bottom:3vh;text-align:center}
-    .chip{display:inline-block;margin:.6vh 1vw;padding:1.2vh 2vw;border-radius:6vh;background:rgba(0,0,0,.4);font-size:4.6vh}
+    #center{position:absolute;left:0;right:0;top:0;bottom:44vh;display:flex;align-items:center;justify-content:center}
+    #tia{width:30vh;height:30vh;margin-right:4vw;display:none}
+    #word{font-size:22vh;font-weight:900;text-align:center;text-shadow:0 .6vh 1.2vh rgba(0,0,0,.4)}
+    #banner{font-size:9vh;font-weight:800;text-align:center;padding:0 4vw;line-height:1.1}
+    #message{position:absolute;left:0;right:0;top:3vh;text-align:center;font-size:7vh;font-weight:800;color:#FFC845}
+    #cam{position:absolute;display:none;background:#000}
+    #stage{position:absolute;left:0;top:60vh;width:100%;height:33vh;display:none}
+    #players{position:absolute;left:0;right:0;bottom:1vh;text-align:center}
+    .chip{display:inline-block;margin:.4vh .8vw;padding:.8vh 1.6vw;border-radius:6vh;background:rgba(0,0,0,.4);font-size:3.6vh}
     .chip.out{opacity:.4}
-    .dot{display:inline-block;width:3.4vh;height:3.4vh;border-radius:50%;margin-right:1vw;vertical-align:middle}
+    .dot{display:inline-block;width:3vh;height:3vh;border-radius:50%;margin-right:.8vw;vertical-align:middle}
     #status{position:absolute;right:2vw;top:2vh;font-size:2.6vh;opacity:.8}
     #sound{position:absolute;left:0;right:0;bottom:0;padding:2vh;text-align:center;font-size:3.4vh;background:#FFC845;color:#1B1433;font-weight:700}
     </style>
@@ -28,6 +29,7 @@ enum TVPage {
     <body>
     <div id="bg"></div>
     <div id="message"></div>
+    <img id="cam" alt="">
     <canvas id="stage"></canvas>
     <div id="center">
       <svg id="tia" viewBox="0 0 200 200">
@@ -46,7 +48,73 @@ enum TVPage {
     <script>
     var unlocked = false, ctx = null, buffers = {}, pending = {}, active = [], epoch = 0;
     var fallback = null, total = 0, loaded = 0;
+    var lastState = { screen: 'menu', players: [] }, lastPose = { figures: [] };
+    var camCode = (location.search.match(/[?&]t=([0-9]+)/) || [])[1];
     function el(id){ return document.getElementById(id); }
+
+    // ---------- avatares (desenhados a partir das juntas do corpo, nunca da imagem)
+    function shade(hex, f){
+      var n = parseInt(hex.replace('#', ''), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      return 'rgb(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ')';
+    }
+    function mid(a, b){ return (a && b) ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] : (a || b); }
+    function dot(g, p, r, color){ if (!p) return; g.fillStyle = color; g.beginPath(); g.arc(p[0], p[1], r, 0, 6.2832); g.fill(); }
+    function limb(g, a, b, w, color){
+      if (!a || !b) return;
+      g.strokeStyle = color; g.lineWidth = w; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+    }
+    function drawAvatar(g, f, ox, oy, bw, bh){
+      function P(k){ var p = f.joints[k]; return p ? [ox + p[0] * bw, oy + p[1] * bh] : null; }
+      var ls = P('ls'), rs = P('rs'), lh = P('lh'), rh = P('rh'), nose = P('n');
+      var u = (ls && rs) ? Math.abs(ls[0] - rs[0]) : ((lh && rh) ? Math.abs(lh[0] - rh[0]) * 1.2 : bh * 0.08);
+      u = Math.max(bh * 0.045, Math.min(bh * 0.22, u));
+      var body = f.color, dark = shade(f.color, 0.6), skin = '#FFD9B8';
+      g.globalAlpha = f.ready ? 1 : 0.6;
+      limb(g, lh, P('lk'), u * 0.5, dark); limb(g, P('lk'), P('la'), u * 0.5, dark);
+      limb(g, rh, P('rk'), u * 0.5, dark); limb(g, P('rk'), P('ra'), u * 0.5, dark);
+      dot(g, P('la'), u * 0.32, '#2b2140'); dot(g, P('ra'), u * 0.32, '#2b2140');
+      var ms = mid(ls, rs), mh = mid(lh, rh);
+      if (ms && mh) { limb(g, ms, mh, u * 1.2, body); }
+      else if (ms) { limb(g, ms, [ms[0], ms[1] + u * 1.7], u * 1.2, body); }
+      limb(g, ls, P('le'), u * 0.42, body); limb(g, P('le'), P('lw'), u * 0.4, body);
+      limb(g, rs, P('re'), u * 0.42, body); limb(g, P('re'), P('rw'), u * 0.4, body);
+      dot(g, P('lw'), u * 0.27, skin); dot(g, P('rw'), u * 0.27, skin);
+      if (nose) {
+        var r = u * 0.66;
+        dot(g, nose, r, skin);
+        g.fillStyle = dark; g.beginPath(); g.arc(nose[0], nose[1], r * 1.04, 3.3, 6.12); g.fill();
+        dot(g, [nose[0] - r * 0.36, nose[1] - r * 0.02], r * 0.11, '#000');
+        dot(g, [nose[0] + r * 0.36, nose[1] - r * 0.02], r * 0.11, '#000');
+        g.strokeStyle = '#000'; g.lineWidth = Math.max(2, r * 0.1); g.lineCap = 'round';
+        g.beginPath(); g.arc(nose[0], nose[1] + r * 0.12, r * 0.38, 0.35, 2.79); g.stroke();
+        g.fillStyle = f.color; g.textAlign = 'center'; g.font = 'bold ' + Math.round(bh * 0.06) + 'px Arial';
+        g.fillText(f.name + (f.ready ? ' ✓' : ' !'), nose[0], Math.max(oy + bh * 0.07, nose[1] - r * 1.5));
+      }
+      g.globalAlpha = 1;
+    }
+    function stageBox(c){
+      var W = c.width = c.clientWidth, H = c.height = c.clientHeight, aspect = lastPose.aspect || 1.7778;
+      var bw = W, bh = W / aspect;
+      if (bh > H) { bh = H; bw = H * aspect; }
+      return { W: W, H: H, ox: (W - bw) / 2, oy: (H - bh) / 2, bw: bw, bh: bh };
+    }
+    function drawStage(){
+      var c = el('stage');
+      if (!c.getContext || c.style.display === 'none') return;
+      var g = c.getContext('2d'), b = stageBox(c);
+      g.clearRect(0, 0, b.W, b.H);
+      var cam = el('cam');
+      if (cam.style.display === 'block') {
+        cam.style.left = (c.offsetLeft + b.ox) + 'px'; cam.style.top = (c.offsetTop + b.oy) + 'px';
+        cam.style.width = b.bw + 'px'; cam.style.height = b.bh + 'px';
+      } else {
+        g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(b.ox, b.oy, b.bw, b.bh);
+      }
+      g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.strokeRect(b.ox, b.oy, b.bw, b.bh);
+      var figs = lastPose.figures || [];
+      for (var i = 0; i < figs.length; i++) { drawAvatar(g, figs[i], b.ox, b.oy, b.bw, b.bh); }
+    }
 
     // ---------- tela
     function setArms(g){
@@ -54,49 +122,25 @@ enum TVPage {
       el('armL').setAttribute('transform', 'rotate(' + l + ' 70 100)');
       el('armR').setAttribute('transform', 'rotate(' + r + ' 130 100)');
     }
-    function drawFigures(s){
-      var c = el('stage');
-      if (!c.getContext) return;
-      var g = c.getContext('2d');
-      var W = c.width = c.clientWidth, H = c.height = c.clientHeight;
-      g.clearRect(0, 0, W, H);
-      var aspect = s.aspect || 1.7778, bw = W, bh = W / aspect;
-      if (bh > H) { bh = H; bw = H * aspect; }
-      var ox = (W - bw) / 2, oy = (H - bh) / 2;
-      g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(ox, oy, bw, bh);
-      g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.strokeRect(ox, oy, bw, bh);
-      var figs = s.figures || [];
-      for (var i = 0; i < figs.length; i++) {
-        var f = figs[i];
-        g.strokeStyle = f.color; g.fillStyle = f.color; g.lineCap = 'round';
-        g.lineWidth = Math.max(5, bh * 0.014); g.globalAlpha = f.ready ? 1 : 0.55;
-        g.beginPath();
-        for (var j = 0; j < f.bones.length; j++) {
-          var b = f.bones[j];
-          g.moveTo(ox + b[0] * bw, oy + b[1] * bh); g.lineTo(ox + b[2] * bw, oy + b[3] * bh);
-        }
-        g.stroke();
-        if (f.head) {
-          var hx = ox + f.head[0] * bw, hy = oy + f.head[1] * bh;
-          g.beginPath(); g.arc(hx, hy, bh * 0.035, 0, 6.2832); g.fill();
-          g.font = 'bold ' + Math.round(bh * 0.055) + 'px Arial'; g.textAlign = 'center';
-          g.fillText(f.name + (f.ready ? ' ✓' : ' !'), hx, Math.max(oy + bh * 0.06, hy - bh * 0.06));
-        }
-        g.globalAlpha = 1;
-      }
-    }
     function render(s){
+      lastState = s;
       var positioning = (s.screen === 'positioning');
+      var playing = (s.screen === 'play' || s.screen === 'result');
       var play = (s.screen === 'play' && s.word);
+      var stage = el('stage'), cam = el('cam');
       el('bg').style.background = (s.word && s.background) ? s.background : 'linear-gradient(#1B1433,#3A2A6B)';
       el('word').textContent = s.word || '';
       el('banner').textContent = positioning ? '' : (s.banner || (s.screen === 'menu' ? 'Agacha!' : ''));
       el('message').textContent = positioning ? (s.banner || '') : (s.message || '');
       el('center').style.display = positioning ? 'none' : 'flex';
-      el('stage').style.display = positioning ? 'block' : 'none';
-      el('tia').style.display = (s.screen === 'play' || s.screen === 'result') ? 'block' : 'none';
+      el('tia').style.display = playing ? 'block' : 'none';
+      stage.style.display = (positioning || playing) ? 'block' : 'none';
+      stage.style.top = positioning ? '17vh' : '60vh';
+      stage.style.height = positioning ? '66vh' : '33vh';
+      var showCam = positioning && camCode;
+      if (showCam && !cam.getAttribute('data-on')) { cam.src = '/camera.mjpg?t=' + camCode; cam.setAttribute('data-on', '1'); }
+      cam.style.display = showCam ? 'block' : 'none';
       setArms(play ? s.gesture : null);
-      if (positioning) drawFigures(s);
       var html = '';
       for (var i = 0; i < (s.players || []).length; i++) {
         var p = s.players[i];
@@ -104,7 +148,9 @@ enum TVPage {
               + p.name.replace(/</g, '&lt;') + (p.detail ? ' ' + p.detail : '') + '</span>';
       }
       el('players').innerHTML = html;
+      drawStage();
     }
+    function pose(p){ lastPose = p; drawStage(); }
 
     // ---------- som (Web Audio: sem o limite de elementos de áudio das TVs)
     function audioContext(){
@@ -192,6 +238,7 @@ enum TVPage {
     function connect(){
       var es = new EventSource('/events');
       es.addEventListener('state', function(e){ el('status').textContent = ''; render(JSON.parse(e.data)); });
+      es.addEventListener('pose', function(e){ pose(JSON.parse(e.data)); });
       es.addEventListener('audio', function(e){ playClip(e.data); });
       es.addEventListener('stop', stopAll);
       es.onerror = function(){ el('status').textContent = 'Reconectando…'; };

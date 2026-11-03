@@ -15,10 +15,14 @@ final class TVBridge {
     /// Quantos navegadores estão conectados agora.
     private(set) var connectedScreens = 0
     private(set) var errorMessage: String?
+    /// Mostrar a câmera de verdade na tela de posicionamento (teste). Exige o código na URL.
+    private(set) var cameraOn = false
+    private(set) var cameraAddress: String?
     /// Tocar os sons na TV (em vez do iPad) quando houver TV conectada.
     var soundOnTV = true
 
-    @ObservationIgnored private let server = TVServer()
+    @ObservationIgnored let server = TVServer()
+    @ObservationIgnored private(set) lazy var cameraStreamer = CameraStreamer(server: server)
     @ObservationIgnored private let logger = Logger(subsystem: "br.com.agacha.app", category: "tv")
 
     /// Saída de som para o `AudioPlayer`: só vale com a TV ligada, conectada e com o som da TV ativo.
@@ -36,8 +40,11 @@ final class TVBridge {
         guard on != isOn, !isStarting else { return }
         guard on else {
             server.stop()
+            cameraStreamer.setEnabled(false)
             isOn = false
             address = nil
+            cameraOn = false
+            cameraAddress = nil
             connectedScreens = 0
             return
         }
@@ -58,9 +65,30 @@ final class TVBridge {
         }
     }
 
+    func publishPose(_ pose: TVPose) {
+        guard isOn else { return }
+        server.publishPose(pose)
+    }
+
     func publish(_ state: TVState) {
         guard isOn else { return }
         server.publish(state)
+    }
+
+    /// Liga/desliga o vídeo da câmera na TV. Quem abrir o endereço sem o código não vê a câmera.
+    func setCamera(_ on: Bool) {
+        guard isOn else { return }
+        guard on else {
+            server.setCameraToken(nil)
+            cameraStreamer.setEnabled(false)
+            cameraOn = false
+            cameraAddress = nil
+            return
+        }
+        let token = String(Int.random(in: 1000...9999))
+        server.setCameraToken(token)
+        cameraOn = true
+        cameraAddress = address.map { "\($0)/?t=\(token)" }
     }
 
     func say(_ text: String) {
