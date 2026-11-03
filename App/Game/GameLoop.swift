@@ -58,6 +58,10 @@ final class GameLoop {
     let recorder = ClipRecorder()
     let tv = TVBridge()
     var lastTVPublish = 0.0
+    /// Resultado do último treino solo.
+    var soloScore = 0
+    var soloBest = 0
+    var soloIsRecord = false
     var lastTVState: TVState?
     var tvUpdatePending = false
     let audio = AudioPlayer()
@@ -127,8 +131,10 @@ final class GameLoop {
     /// `anyway`: começa com todas as pessoas vistas, mesmo sem o enquadramento completo.
     func startGame(anyway: Bool = false) {
         guard stage == .positioning else { return }
-        let slots = anyway ? report.people.map(\.slot) : report.readySlots
-        guard slots.count >= 2 else { return }
+        let candidates = anyway ? report.people.map(\.slot) : report.readySlots
+        // No treino solo joga só uma pessoa (a mais à esquerda); as outras no quadro são ignoradas.
+        let slots = settings.solo ? Array(candidates.prefix(1)) : candidates
+        guard slots.count >= (settings.solo ? 1 : 2) else { return }
         promptTask?.cancel()
         namingTask?.cancel()
         audio.stop()
@@ -137,7 +143,7 @@ final class GameLoop {
         stage = .playing
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
-                                maxErrors: settings.maxErrors, displayDelay: settings.tvDelay)
+                                maxErrors: settings.maxErrors, displayDelay: settings.tvDelay, solo: settings.solo)
         if settings.recordReplay { recorder.start() }
         send(.start(config))
     }
@@ -199,6 +205,7 @@ final class GameLoop {
         case let .showResult(result): showResult(result)
         case let .finished(result):
             recorder.stop()
+            recordSoloScore()
             celebrate(result)
         }
     }

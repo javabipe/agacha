@@ -24,6 +24,13 @@ import Testing
         #expect(report.readySlots == [0, 1])
     }
 
+    @Test func soloModeAcceptsASinglePerson() {
+        let one = analysis([full(centerX: 0.5)])
+        #expect(PositioningCheck.evaluate(one, minPlayers: 1).allReady)
+        #expect(!PositioningCheck.evaluate(one).allReady)
+        #expect(!PositioningCheck.evaluate(analysis([]), minPlayers: 1).allReady)
+    }
+
     @Test func needsAtLeastTwoPlayers() {
         #expect(!PositioningCheck.evaluate(analysis([full(centerX: 0.5)])).allReady)
         #expect(!PositioningCheck.evaluate(analysis([])).allReady)

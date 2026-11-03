@@ -43,7 +43,7 @@ extension GameLoop {
         case .idle:
             break
         case .positioning:
-            report = PositioningCheck.evaluate(analysis)
+            report = PositioningCheck.evaluate(analysis, minPlayers: settings.solo ? 1 : 2)
             if step == .framing {
                 updateGuidance(report)
                 advanceToNames(report, at: analysis.timestamp)

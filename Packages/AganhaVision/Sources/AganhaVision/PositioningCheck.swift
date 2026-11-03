@@ -21,10 +21,10 @@ public struct PositioningReport: Sendable, Equatable {
     public let people: [PersonCheck]
     /// Pessoas além das 6 vagas.
     public let extraPeople: Int
+    /// Quantas pessoas são necessárias para começar (2 no jogo, 1 no treino solo).
+    public let minPlayers: Int
 
-    public static let empty = PositioningReport(people: [], extraPeople: 0)
-
-    public var minPlayers: Int { 2 }
+    public static let empty = PositioningReport(people: [], extraPeople: 0, minPlayers: 2)
     public var allReady: Bool { people.count >= minPlayers && people.allSatisfy(\.isReady) }
     public var firstProblem: PersonCheck? { people.first { !$0.isReady } }
     public var readySlots: [ChildSlot] { people.filter(\.isReady).map(\.slot) }
@@ -36,13 +36,13 @@ public struct PositioningReport: Sendable, Equatable {
 public enum PositioningCheck {
     public static let edgeMargin = 0.02
 
-    public static func evaluate(_ analysis: FrameAnalysis, minConfidence: Double = 0.3) -> PositioningReport {
+    public static func evaluate(_ analysis: FrameAnalysis, minConfidence: Double = 0.3, minPlayers: Int = 2) -> PositioningReport {
         let slotted = analysis.people.compactMap { person -> PersonCheck? in
             guard let slot = person.slot else { return nil }
             return check(person.skeleton, slot: slot, minConfidence: minConfidence)
         }
         return PositioningReport(people: slotted.sorted { $0.slot < $1.slot },
-                                 extraPeople: analysis.people.count - slotted.count)
+                                 extraPeople: analysis.people.count - slotted.count, minPlayers: minPlayers)
     }
 
     static func check(_ skeleton: Skeleton, slot: ChildSlot, minConfidence: Double) -> PersonCheck {

@@ -33,7 +33,7 @@ struct EliminatedView: View {
     }
 
     private var title: some View {
-        Text(info.result.isTie ? "Todos erraram juntos!" : "Alguém errou!")
+        Text(info.result.isTie ? "Todos erraram juntos!" : (loop.state.config?.solo == true ? "Errou!" : "Alguém errou!"))
             .font(.system(size: 34, weight: .black, design: .rounded))
             .foregroundStyle(Color.aganhaYellow)
             .padding(.horizontal, 16)

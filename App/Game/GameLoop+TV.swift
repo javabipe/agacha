@@ -81,6 +81,9 @@ extension GameLoop {
                 TVState.Player(name: name(for: slot), color: SlotColors.hex(slot),
                                out: state.players[slot]?.isEliminated ?? false, detail: statusDetail(for: slot))
             }
+            if case .gameOver = state.phase, state.config?.solo == true {
+                return TVState(screen: "gameover", message: "Fim do treino: \(soloScore) acertos!", players: players)
+            }
             if case let .gameOver(result) = state.phase {
                 let winners = result.winners.map { name(for: $0) }
                 let message = result.isTie ? "Empate!" : "\(winners.first ?? "") venceu!"

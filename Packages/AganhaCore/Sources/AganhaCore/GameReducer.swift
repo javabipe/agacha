@@ -56,7 +56,8 @@ public enum GameReducer {
         default: return []
         }
         let slots = Set(config.slots)
-        guard slots.count == config.slots.count, (2...GameLimits.maxChildren).contains(slots.count),
+        let validCount = config.solo ? slots.count == 1 : (2...GameLimits.maxChildren).contains(slots.count)
+        guard slots.count == config.slots.count, validCount,
               slots.allSatisfy({ (0..<GameLimits.maxChildren).contains($0) })
         else { return [] }
 
@@ -129,7 +130,9 @@ public enum GameReducer {
         }
 
         // Todos os que restavam saíram juntos: empate, ninguém é eliminado.
-        let isTie = !before.isEmpty && eliminated.count == before.count
+        // (No treino solo, perder é só o fim do treino.)
+        let solo = state.config?.solo ?? false
+        let isTie = !solo && !before.isEmpty && eliminated.count == before.count
         if isTie { eliminated = [] }
         for slot in eliminated {
             state.players[slot]?.isEliminated = true
@@ -137,7 +140,9 @@ public enum GameReducer {
         }
 
         let survivors = state.survivors
-        let finished: GameResult? = if isTie {
+        let finished: GameResult? = if solo {
+            survivors.isEmpty ? makeResult(state, winners: []) : nil
+        } else if isTie {
             makeResult(state, winners: survivors)
         } else if survivors.count == 1 {
             makeResult(state, winners: survivors)

@@ -319,3 +319,79 @@ import Testing
         #expect(GameConfig(slots: [0, 1], seed: 1, maxErrors: 0).maxErrors == 1)
     }
 }
+
+@Suite struct SoloTests {
+    private func started(maxErrors: Int = 1) -> GameState {
+        var state = GameState()
+        GameReducer.reduce(&state, .start(GameConfig(slots: [3], seed: 4, maxErrors: maxErrors, solo: true)))
+        GameReducer.reduce(&state, .countdownFinished)
+        return state
+    }
+
+    private func round(_ state: inout GameState, wrong: Bool) {
+        guard case let .announcing(command) = state.phase else { Issue.record("fase \(state.phase)"); return }
+        GameReducer.reduce(&state, .commandAudioStarted(at: 1))
+        guard case let .window(_, _, closes) = state.phase else { return }
+        let posture = wrong ? command.word.opposite.posture : command.word.posture
+        GameReducer.reduce(&state, .postureSamples([PostureSample(childSlot: 3, posture: posture, timestamp: closes - 0.05)]))
+        GameReducer.reduce(&state, .windowClosed)
+    }
+
+    @Test func soloAcceptsExactlyOnePlayerAndNormalGameStillNeedsTwo() {
+        var state = GameState()
+        #expect(GameReducer.reduce(&state, .start(GameConfig(slots: [0], seed: 1, solo: true))) == [.startCountdown])
+        var two = GameState()
+        #expect(GameReducer.reduce(&two, .start(GameConfig(slots: [0, 1], seed: 1, solo: true))).isEmpty)
+        var normal = GameState()
+        #expect(GameReducer.reduce(&normal, .start(GameConfig(slots: [0], seed: 1))).isEmpty)
+    }
+
+    @Test func soloKeepsGoingWhileTheSinglePlayerIsRight() {
+        var state = started()
+        for expected in 1...5 {
+            round(&state, wrong: false)
+            guard case let .result(result) = state.phase else { Issue.record("fase"); return }
+            #expect(result.finished == nil)
+            #expect(state.players[3]?.correct == expected)
+            GameReducer.reduce(&state, .next)
+        }
+        #expect(state.survivors == [3])
+    }
+
+    @Test func soloEndsWhenThePlayerErrsWithoutWinnerOrTie() {
+        var state = started()
+        round(&state, wrong: false); GameReducer.reduce(&state, .next)
+        round(&state, wrong: false); GameReducer.reduce(&state, .next)
+        round(&state, wrong: true)
+        guard case let .result(result) = state.phase, let finished = result.finished else { Issue.record("sem fim"); return }
+        #expect(finished.winners.isEmpty)
+        #expect(!finished.isTie)
+        #expect(!result.isTie)
+        #expect(finished.ranking == [3])
+        #expect(result.eliminated == [3])
+        #expect(state.players[3]?.correct == 2)
+        GameReducer.reduce(&state, .next)
+        #expect(state.phase == .gameOver(finished))
+    }
+
+    @Test func soloWithMoreErrorsAllowedSurvivesUntilTheLimit() {
+        var state = started(maxErrors: 3)
+        for _ in 1...2 {
+            round(&state, wrong: true)
+            guard case let .result(result) = state.phase else { Issue.record("fase"); return }
+            #expect(result.finished == nil)
+            GameReducer.reduce(&state, .next)
+        }
+        round(&state, wrong: true)
+        guard case let .result(final) = state.phase else { Issue.record("fase"); return }
+        #expect(final.finished != nil)
+    }
+
+    @Test func soloUnfairReopensTheTraining() {
+        var state = started()
+        round(&state, wrong: true)
+        GameReducer.reduce(&state, .unfair)
+        #expect(state.survivors == [3])
+        #expect(state.players[3]?.errors == 0)
+    }
+}

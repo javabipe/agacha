@@ -16,7 +16,8 @@ struct RootView: View {
     @ViewBuilder private var content: some View {
         switch route {
         case .menu:
-            MenuView(loop: loop, onPlay: {
+            MenuView(loop: loop, onPlay: { solo in
+                loop.settings.solo = solo
                 route = .game
                 loop.startPositioning()
             }, onDiagnostic: { route = .diagnostic })
@@ -38,6 +39,8 @@ struct RootView: View {
         switch (loop.stage, loop.state.phase) {
         case (.playing, .gameOver(let result)):
             GameOverView(result: result, name: loop.name(for:), isListening: loop.isListening, heard: loop.heardText,
+                         solo: loop.state.config?.solo == true
+                             ? SoloSummary(score: loop.soloScore, best: loop.soloBest, isRecord: loop.soloIsRecord) : nil,
                          onPlayAgain: { loop.startPositioning(keepSlots: true) }, onMenu: leave)
         case (.playing, _):
             PlayView(loop: loop, onQuit: leave)

@@ -3,7 +3,8 @@ import SwiftUI
 
 struct MenuView: View {
     @Bindable var loop: GameLoop
-    let onPlay: () -> Void
+    /// `true` para o treino solo.
+    let onPlay: (Bool) -> Void
     let onDiagnostic: () -> Void
     @State private var mirroring = MirroringMonitor()
     @State private var showTV = false
@@ -27,8 +28,12 @@ struct MenuView: View {
                         picker("Nível", selection: $loop.settings.difficulty, options: Difficulty.allCases, label: Self.name)
                         picker("Tempo para reagir", selection: $loop.settings.tolerance, options: Tolerance.allCases, label: Self.name)
                         picker("Comandos", selection: $loop.settings.commandSet, options: [.classic, .school], label: Self.name)
-                        picker("Erros permitidos por jogador", selection: $loop.settings.maxErrors, options: [1, 2, 3, 5]) {
-                            $0 == 1 ? String(localized: "1 (sai no primeiro)") : "\($0)"
+                        picker("Erros permitidos por jogador", selection: $loop.settings.maxErrors, options: [1, 2, 3, 5, 99]) {
+                            switch $0 {
+                            case 1: String(localized: "1 (sai no primeiro)")
+                            case 99: String(localized: "Sem limite")
+                            default: "\($0)"
+                            }
                         }
                         Toggle("Perguntar o nome de cada jogador", isOn: $loop.settings.askNames)
                             .font(.headline)
@@ -45,7 +50,7 @@ struct MenuView: View {
                     .padding(20)
                     .background(.black.opacity(0.3), in: .rect(cornerRadius: 20))
 
-                    Button(action: onPlay) {
+                    Button { onPlay(false) } label: {
                         Text("Jogar")
                             .font(.system(size: 34, weight: .heavy, design: .rounded))
                             .frame(maxWidth: .infinity)
@@ -53,6 +58,15 @@ struct MenuView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(Color(hex: "#36C9A6"))
+
+                    Button { onPlay(true) } label: {
+                        Label("Treino solo (1 jogador)", systemImage: "person.fill")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Color.aganhaCream)
 
                     tvControls
 
