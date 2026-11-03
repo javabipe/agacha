@@ -87,12 +87,15 @@ public struct TVState: Codable, Equatable, Sendable {
         /// Juntas vistas: `n` nariz, `ls`/`rs` ombros, `le`/`re` cotovelos, `lw`/`rw` pulsos, `lh`/`rh` quadris,
         /// `lk`/`rk` joelhos, `la`/`ra` tornozelos. Cada uma `[x, y]` em 0...1 (origem no canto superior esquerdo).
         public var joints: [String: [Double]]
+        /// Visual do avatar: `girl` (cabelo comprido com laço) ou `boy`/nil (cabelo curto).
+        public var look: String?
 
-        public init(name: String, color: String, ready: Bool, joints: [String: [Double]]) {
+        public init(name: String, color: String, ready: Bool, joints: [String: [Double]], look: String? = nil) {
             self.name = name
             self.color = color
             self.ready = ready
             self.joints = joints
+            self.look = look
         }
     }
 

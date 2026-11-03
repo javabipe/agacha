@@ -47,7 +47,7 @@ struct MomentCard: View {
         if showReal, let realCover, let url = moment.realVideoURL {
             Button { playingReal = true } label: { VideoCover(image: realCover, duration: "0:04") }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Tocar o replay do último movimento")
+                .accessibilityLabel("Tocar o replay do erro")
                 .fullScreenCover(isPresented: $playingReal) { VideoPlayerSheet(url: url, onClose: { playingReal = false }) }
         } else if showReal, let shot {
             MomentPreview(moment: moment, photo: shot)

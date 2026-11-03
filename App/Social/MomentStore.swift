@@ -9,6 +9,7 @@ private struct SavedPlayer: Codable {
     let colorHex: String
     let coins: Int
     let isWinner: Bool
+    var girl: Bool?
 }
 
 private struct Saved: Codable {
@@ -62,14 +63,14 @@ struct MomentStore: Sendable {
             }
             var clipFile: String?
             if let clip {
-                try FileManager.default.moveItem(at: clip, to: folder.appending(path: "ultimo-movimento.mp4"))
-                clipFile = "ultimo-movimento.mp4"
+                try FileManager.default.moveItem(at: clip, to: folder.appending(path: "replay-do-erro.mp4"))
+                clipFile = "replay-do-erro.mp4"
             }
             let saved = Saved(id: moment.id, date: date, title: moment.title, place: moment.place,
                               durationSeconds: moment.durationSeconds, mode: moment.mode, rounds: moment.rounds,
                               fastestMs: moment.fastestMs,
                               players: moment.players.map {
-                                  SavedPlayer(name: $0.name, colorHex: $0.colorHex, coins: $0.coins, isWinner: $0.isWinner)
+                                  SavedPlayer(name: $0.name, colorHex: $0.colorHex, coins: $0.coins, isWinner: $0.isWinner, girl: $0.isGirl)
                               },
                               posterFile: posterFile, shotFiles: shotFiles, clipFile: clipFile)
             try JSONEncoder().encode(saved).write(to: folder.appending(path: "moment.json"), options: .completeFileProtection)
@@ -128,7 +129,8 @@ struct MomentStore: Sendable {
                             durationSeconds: saved.durationSeconds, views: 0, likes: 0, mode: saved.mode, rounds: saved.rounds,
                             fastestMs: saved.fastestMs,
                             players: saved.players.map {
-                                Moment.Player(name: $0.name, colorHex: $0.colorHex, coins: $0.coins, isWinner: $0.isWinner)
+                                Moment.Player(name: $0.name, colorHex: $0.colorHex, coins: $0.coins, isWinner: $0.isWinner,
+                                              isGirl: $0.girl ?? false)
                             })
         moment.isSample = false
         moment.posterURL = saved.posterFile.map { folder.appending(path: $0) }

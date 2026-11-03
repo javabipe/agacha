@@ -95,6 +95,13 @@ struct PositioningView: View {
     private var people: some View {
         HStack {
             ForEach(loop.report.people, id: \.slot) { person in
+                Button { loop.toggleLook(for: person.slot) } label: {
+                    Text(loop.look(for: person.slot) == .girl ? "👧" : "👦")
+                        .font(.title2)
+                        .padding(8)
+                        .background(.black.opacity(0.45), in: .circle)
+                }
+                .accessibilityLabel("Trocar o avatar de \(loop.name(for: person.slot))")
                 Button {
                     draft = loop.names[person.slot] ?? ""
                     renaming = person.slot

@@ -1,3 +1,4 @@
+import AganhaCore
 import SwiftUI
 
 /// Humor do avatar: o rosto e a boca mudam (alegre, normal, chorando).
@@ -22,6 +23,8 @@ struct AvatarFigure {
     var mood: AvatarMood = .normal
     var crown = false
     var host: HostStyle?
+    /// Visual dos jogadores: cabelo curto ou cabelo comprido com laço.
+    var look: AvatarLook = .boy
     /// Largura dos ombros e raio da cabeça, em fração da altura da caixa (sem isso saem dos próprios ombros).
     var shoulderWidth: CGFloat?
     var headRadius: CGFloat?

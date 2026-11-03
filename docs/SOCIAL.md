@@ -30,7 +30,7 @@ Estado: **simulação** com dados de exemplo (telas "Momentos" e "Compartilhar m
 
 ## Decisões do Paulo (2026-11-16)
 - **Vídeo/imagem de avatares é o padrão**; a **foto real** dos jogadores é uma opção (com aviso de autorização dos responsáveis).
-- **Momentos já salva** (só no aparelho, fora do backup, com apagar um/todos e interruptor nos Ajustes): o pôster de avatares e até 4 fotos reais ("shots": uma do fim da partida e até 3 de destaques — acerto PERFEITO no modo pontuação, erro na eliminação). Ainda não há vídeo: o pôster e as fotos são imagens.
+- **Momentos já salva** (só no aparelho, fora do backup, com apagar um/todos e interruptor nos Ajustes): o pôster de avatares, o vídeo de avatares e, se alguém errou com o replay ligado (eliminação), o replay desse erro com uma foto dele.
 - **SDKs instalados, mas desligados** (`SocialConfig.isLive == false`): pacote `Packages/AganhaSocial` — TikTok Share Kit (SDK oficial), Instagram Reels (esquema de URL da Meta; não existe SDK a instalar), WhatsApp (sem SDK), YouTube (sem SDK; API de dados com login Google, a fazer). Nada é enviado enquanto não houver chaves e o interruptor. Chaves: `TIKTOK_CLIENT_KEY` em `Config/Base.xcconfig`/`Local.xcconfig`, ID do app Meta e ID OAuth do Google em `SocialConfig`.
 - **Atenção Kids:** SDK de terceiro dentro de app da categoria Kids pode reprovar na App Store (a regra proíbe enviar dados a terceiros). Por isso tudo de terceiros está num pacote só, que dá para **retirar** de uma versão Kids.
 

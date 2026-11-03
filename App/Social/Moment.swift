@@ -9,6 +9,8 @@ struct Moment: Identifiable, Sendable {
         let colorHex: String
         let coins: Int
         let isWinner: Bool
+        /// Avatar de menina (cabelo comprido com laço).
+        var isGirl = false
     }
 
     let id: UUID
@@ -28,7 +30,7 @@ struct Moment: Identifiable, Sendable {
     var posterURL: URL?
     /// Vídeo de avatares do momento (aparece depois de gerado).
     var videoURL: URL?
-    /// Replay do último movimento com a câmera (as crianças de verdade): só se compartilha com autorização.
+    /// Replay do erro (câmera, as crianças de verdade): só se compartilha com autorização.
     var realVideoURL: URL?
     var shotURLs: [URL] = []
 
@@ -68,13 +70,13 @@ extension Moment {
         Moment(title: "Família Silva", place: "Sala da vovó", ago: "há 2 h", durationSeconds: 24, views: 12_400, likes: 3_100,
                mode: .score, rounds: 10, fastestMs: 480, players: [
                 Player(name: "Davi", colorHex: "#FFC845", coins: 62, isWinner: true),
-                Player(name: "Mãe", colorHex: "#36C9A6", coins: 48, isWinner: false),
+                Player(name: "Mãe", colorHex: "#36C9A6", coins: 48, isWinner: false, isGirl: true),
                 Player(name: "Pai", colorHex: "#FF7AB8", coins: 31, isWinner: false)]),
         Moment(title: "Aniversário da Bia", place: "Festa", ago: "ontem", durationSeconds: 31, views: 48_900, likes: 9_800,
                mode: .score, rounds: 15, fastestMs: 410, players: [
-                Player(name: "Bia", colorHex: "#FF7AB8", coins: 90, isWinner: true),
+                Player(name: "Bia", colorHex: "#FF7AB8", coins: 90, isWinner: true, isGirl: true),
                 Player(name: "Léo", colorHex: "#4D9DE0", coins: 74, isWinner: false),
-                Player(name: "Malu", colorHex: "#8E7BFF", coins: 70, isWinner: false),
+                Player(name: "Malu", colorHex: "#8E7BFF", coins: 70, isWinner: false, isGirl: true),
                 Player(name: "Tito", colorHex: "#FF9F1C", coins: 52, isWinner: false)]),
         Moment(title: "Treino do Arthur", place: "Quarto", ago: "há 3 dias", durationSeconds: 18, views: 860, likes: 240,
                mode: .score, rounds: 10, fastestMs: 530, players: [
@@ -82,7 +84,7 @@ extension Moment {
         Moment(title: "Primos na chácara", place: "Quintal", ago: "semana passada", durationSeconds: 27, views: 5_300, likes: 1_450,
                mode: .elimination, rounds: 12, fastestMs: nil, players: [
                 Player(name: "Gui", colorHex: "#FFC845", coins: 0, isWinner: true),
-                Player(name: "Ana", colorHex: "#FF9F1C", coins: 0, isWinner: false),
+                Player(name: "Ana", colorHex: "#FF9F1C", coins: 0, isWinner: false, isGirl: true),
                 Player(name: "Teo", colorHex: "#4D9DE0", coins: 0, isWinner: false)])
     ]
 }

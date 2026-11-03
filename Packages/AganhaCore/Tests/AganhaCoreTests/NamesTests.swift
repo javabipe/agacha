@@ -56,3 +56,32 @@ import Testing
         }
     }
 }
+
+@Suite struct NameGenderTests {
+    @Test func commonBrazilianNamesAreGuessedFromTheList() {
+        for name in ["Maria", "Júlia", "Beatriz", "Bia", "Helena", "Ana Clara"] { #expect(NameGender.guess(name) == .girl) }
+        for name in ["Pedro", "João", "Arthur", "Davi", "Luiz", "Paulo", "Luca", "Joshua"] { #expect(NameGender.guess(name) == .boy) }
+    }
+
+    @Test func accentsAndCaseDoNotMatter() {
+        #expect(NameGender.guess("  GIOVANNA ") == .girl)
+        #expect(NameGender.guess("andré") == .boy)
+        #expect(NameGender.guess("João Pedro") == .boy)
+    }
+
+    @Test func unknownNamesFallBackToTheEnding() {
+        #expect(NameGender.guess("Zuleica") == .girl)
+        #expect(NameGender.guess("Wilton") == .boy)
+    }
+
+    @Test func ambiguousOrEmptyNamesGiveNoGuess() {
+        #expect(NameGender.guess("") == nil)
+        #expect(NameGender.guess("Amarelo") == .boy)   // termina em "o"; só cores de vaga caem aqui
+        #expect(NameGender.guess("Alex") == nil)
+        #expect(NameGender.guess("Dani") == nil)
+    }
+
+    @Test func toggleSwitchesTheLook() {
+        #expect(AvatarLook.boy.toggled == .girl && AvatarLook.girl.toggled == .boy)
+    }
+}

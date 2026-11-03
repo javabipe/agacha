@@ -7,6 +7,20 @@ import Foundation
 extension GameLoop {
     // MARK: - Nomes
 
+    func look(for slot: ChildSlot) -> AvatarLook { looks[slot] ?? .boy }
+
+    func toggleLook(for slot: ChildSlot) {
+        looks[slot] = look(for: slot).toggled
+    }
+
+    /// Nome novo ou trocado: sugere o visual do avatar pelo nome (nome desconhecido mantém o que já estava).
+    func updateLooks(from old: [ChildSlot: String]) {
+        for (slot, name) in names where old[slot] != name {
+            if let guess = NameGender.guess(name) { looks[slot] = guess }
+        }
+        for slot in old.keys where names[slot] == nil { looks[slot] = nil }
+    }
+
     func name(for slot: ChildSlot) -> String { names[slot] ?? SlotColors.displayName(slot) }
 
     /// Texto grande do topo da tela Posicionar, conforme o momento.

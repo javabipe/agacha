@@ -8,6 +8,11 @@ enum VideoThumbnail {
     nonisolated(unsafe) private static let cache = NSCache<NSURL, UIImage>()
 
     /// `fraction`: onde pegar o quadro (1 = fim). Sem ele, 1,2 s antes do fim (a dancinha no vídeo de avatares).
+    /// Um quadro do vídeo como JPEG (para a "foto real" do replay do erro).
+    static func jpeg(for url: URL, fraction: Double) async -> Data? {
+        await image(for: url, fraction: fraction)?.jpegData(compressionQuality: 0.8)
+    }
+
     static func image(for url: URL, fraction: Double? = nil) async -> UIImage? {
         if let cached = cache.object(forKey: url as NSURL) { return cached }
         let asset = AVURLAsset(url: url)

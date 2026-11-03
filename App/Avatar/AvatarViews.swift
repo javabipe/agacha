@@ -35,9 +35,11 @@ struct AvatarStage: View {
 extension AvatarFigure {
     /// Jogador de pé no meio de `x` (0...1), na pose e no humor dados.
     static func player(name: String?, colorHex: String, x: Double, spec: AvatarPoseSpec, mood: AvatarMood = .normal,
-                       crown: Bool = false, aspect: Double, scale: Double = 1.1, floor: Double = 0.94) -> AvatarFigure {
+                       crown: Bool = false, look: AvatarLook = .boy, aspect: Double, scale: Double = 1.1,
+                       floor: Double = 0.94) -> AvatarFigure {
         let joints = AvatarPoses.joints(spec, centerX: x, floor: floor, scale: scale, aspect: aspect)
-        return AvatarFigure(joints: joints, colorHex: colorHex, name: name, mood: mood, crown: crown, floor: floor, sob: spec.sob)
+        return AvatarFigure(joints: joints, colorHex: colorHex, name: name, mood: mood, crown: crown, look: look, floor: floor,
+                            sob: spec.sob)
     }
 }
 

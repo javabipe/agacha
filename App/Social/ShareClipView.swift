@@ -134,7 +134,7 @@ struct ShareClipView: View {
             return media == .photo ? String(localized: "Não há foto real guardada deste momento.")
                 : String(localized: "Não há replay real guardado deste momento.")
         }
-        let what = media == .photo ? String(localized: "a foto real") : String(localized: "o replay do último movimento")
+        let what = media == .photo ? String(localized: "a foto real") : String(localized: "o replay do erro")
         return showRealKids ? String(localized: "Mostra \(what) com o rosto de quem jogou: só com a autorização dos responsáveis.")
             : String(localized: "Desligado: só avatares (sem rostos reais).")
     }

@@ -46,7 +46,11 @@ final class GameLoop {
     /// Fim de partida: pediram para voltar ao menu (por voz).
     var wantsMenu = false
     var step: PositioningStep = .framing
-    var names: [ChildSlot: String] = [:]
+    var names: [ChildSlot: String] = [:] {
+        didSet { updateLooks(from: oldValue) }
+    }
+    /// Visual do avatar de cada vaga (sugerido pelo nome; dá para trocar com um toque).
+    var looks: [ChildSlot: AvatarLook] = [:]
     var namingSlot: ChildSlot?
     var heardText = ""
     var isListening = false
@@ -59,14 +63,11 @@ final class GameLoop {
     let camera = CameraSession()
     let pipeline = PosePipeline()
     let recorder = ClipRecorder()
-    @ObservationIgnored let shots = ShotCapturer()
-    /// Fotos reais ("shots") dos melhores momentos desta partida, na memória até a partida acabar.
-    var shotCandidates: [Data] = []
     /// O momento da última partida, já salvo no aparelho (para compartilhar com as fotos).
     var lastSavedMoment: Moment?
-    /// Clipe (MP4) dos últimos segundos da partida, guardado junto com o momento; pronto depois de `momentClipTask`.
-    var momentClipURL: URL?
-    var momentClipTask: Task<Void, Never>?
+    /// Replay do último erro (MP4), guardado junto com o momento. Só existe se alguém errou com o replay ligado (eliminação).
+    var errorClipURL: URL?
+    var errorClipTask: Task<Void, Never>?
     /// Movimentos dos jogadores durante a partida (só números), para montar o vídeo de avatares no fim.
     @ObservationIgnored var poseTimeline = PoseTimeline()
     /// Momentos cujo vídeo de avatares ainda está sendo gerado.
@@ -161,15 +162,12 @@ final class GameLoop {
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
                                 maxErrors: settings.maxErrors, displayDelay: settings.tvDelay, solo: settings.solo,
                                 mode: settings.mode, scoreRounds: settings.scoreRounds, doubles: settings.doubles)
-        // A câmera é gravada em pedaços curtos que se renovam: serve ao replay do erro (eliminação) e ao clipe do último movimento.
-        if (settings.recordReplay && settings.mode == .elimination) || settings.saveMoments { recorder.start() }
-        momentClipTask?.cancel()
-        momentClipTask = nil
-        momentClipURL = nil
-        shotCandidates = []
+        if settings.recordReplay, settings.mode == .elimination { recorder.start() }
+        errorClipTask?.cancel()
+        errorClipTask = nil
+        errorClipURL = nil
         lastSavedMoment = nil
         poseTimeline.clear()
-        shots.setArmed(settings.saveMoments)
         send(.start(config))
     }
 
@@ -229,7 +227,7 @@ final class GameLoop {
         case let .scheduleWindowClose(time): scheduleClose(at: time)
         case let .showResult(result): showResult(result)
         case let .finished(result):
-            if !settings.saveMoments { recorder.stop() }
+            recorder.stop()
             if state.config?.mode == .score { recordSoloCoins() } else { recordSoloScore() }
             saveMoment(result)
             celebrate(result)
@@ -301,8 +299,6 @@ final class GameLoop {
     }
 
     private func showResult(_ result: RoundResult) {
-        captureHighlight(result)
-        if result.finished != nil { captureLastMovementClip() }
         if state.config?.mode == .score {
             showScoreResult(result)
             return
@@ -328,6 +324,8 @@ final class GameLoop {
                     let frames = await recorder.exportFrames(ReplayAsset(asset))
                     if !Task.isCancelled { tv.setReplay(frames) }
                 }
+                // Para compartilhar depois: o replay deste erro fica guardado (o último erro da partida vale).
+                if settings.saveMoments, let asset { await keepErrorClip(asset) }
             }
         }
         let deadline = Self.now() + delay
@@ -363,9 +361,8 @@ final class GameLoop {
         replayTask?.cancel()
         replayAsset = nil
         recorder.stop()
-        momentClipTask?.cancel()
-        momentClipTask = nil
-        shots.setArmed(false)
+        errorClipTask?.cancel()
+        errorClipTask = nil
         closeTask?.cancel()
         resultTask?.cancel()
         promptTask?.cancel()

@@ -190,6 +190,7 @@ enum TVPage {
       g.save(); g.translate(cx, cy); g.rotate(roll);
       var fx = yaw * r * 0.42, squeeze = 1 - 0.3 * Math.abs(yaw);
       if (f.host === 'tia') { oval(g, -r * 1.0, r * 0.75, r * 0.3, r * 1.0, 0, '#6B3F2A', null, 0); oval(g, r * 1.0, r * 0.75, r * 0.3, r * 1.0, 0, '#6B3F2A', null, 0); }
+      if (!f.host && f.look === 'girl') { oval(g, -r * 1.0, r * 0.6, r * 0.28, r * 0.9, 0, hair, null, 0); oval(g, r * 1.0, r * 0.6, r * 0.28, r * 0.9, 0, hair, null, 0); }
       // orelhas (a que vira para trás encolhe)
       bead(g, [-r * 0.98, r * 0.05], r * 0.2 * (1 - 0.8 * Math.max(0, -yaw)), SKIN, SKIN_EDGE, ew);
       bead(g, [r * 0.98, r * 0.05], r * 0.2 * (1 - 0.8 * Math.max(0, yaw)), SKIN, SKIN_EDGE, ew);
@@ -256,6 +257,10 @@ enum TVPage {
         g.fillStyle = '#FF7A8A'; g.beginPath(); g.arc(fx, r * 0.5, r * 0.12, 3.1416, 6.2832); g.fill();
       } else {
         g.beginPath(); g.arc(fx, r * 0.2, r * 0.3, 0.4, 2.74); g.stroke();
+      }
+      if (!f.host && f.look === 'girl') {
+        oval(g, r * 0.34, -r * 0.98, r * 0.2, r * 0.12, -0.55, f.color, null, 0); oval(g, r * 0.66, -r * 0.98, r * 0.2, r * 0.12, 0.55, f.color, null, 0);
+        dot(g, [r * 0.5, -r * 0.98], r * 0.07, shade(f.color, 0.7));
       }
       if (f.host === 'tio') {
         g.strokeStyle = '#3B2A22'; g.lineWidth = Math.max(1.5, r * 0.06);
@@ -400,7 +405,7 @@ enum TVPage {
           if (Math.abs(to[0] - x) > 0.0006 || Math.abs(to[1] - y) > 0.0006) { moving = true; } else { x = to[0]; y = to[1]; }
           joints[key] = [x, y];
         }
-        next.push({ name: t.name, color: t.color, ready: t.ready, joints: joints, mood: t.mood, crown: t.crown, floor: t.floor, sob: t.sob });
+        next.push({ name: t.name, color: t.color, ready: t.ready, joints: joints, mood: t.mood, crown: t.crown, floor: t.floor, sob: t.sob, look: t.look });
       }
       shown = next;
       drawStage();
@@ -606,7 +611,7 @@ enum TVPage {
         var f = live[i], b = ending.base[f.name] || (ending.base[f.name] = baseOf(f)), win = !!ending.win[f.name];
         var spec = win ? danceSpec(t + i * 0.1) : sadSpec(t + i * 0.25);
         out.push({ name: f.name, color: f.color, ready: true, joints: figureJoints(b, aspect, spec), mood: win ? 'win' : 'sad',
-                   crown: win, floor: b.floor, sob: spec.sob || 0 });
+                   crown: win, floor: b.floor, sob: spec.sob || 0, look: f.look });
       }
       return out;
     }

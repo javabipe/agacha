@@ -178,7 +178,7 @@ struct HomeView: View {
         hostFigure.host = host
         return [
             AvatarFigure.player(name: nil, colorHex: "#FFC845", x: 0.22, spec: AvatarPoses.dance(time), mood: .win, crown: true,
-                                aspect: aspect, scale: 1.0),
+                                look: .girl, aspect: aspect, scale: 1.0),
             AvatarFigure.player(name: nil, colorHex: "#36C9A6", x: 0.78, spec: AvatarPoses.dance(time + 0.55), mood: .win, aspect: aspect,
                                 scale: 1.0),
             hostFigure

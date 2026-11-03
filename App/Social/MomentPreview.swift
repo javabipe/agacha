@@ -47,7 +47,8 @@ struct MomentPreview: View {
             let x = count == 1 ? 0.5 : 0.17 + 0.66 * Double(index) / Double(count - 1)
             let spec = player.isWinner ? AvatarPoses.dance(time + Double(index) * 0.1) : AvatarPoses.sad(time + Double(index) * 0.25)
             return AvatarFigure.player(name: nil, colorHex: player.colorHex, x: x, spec: spec, mood: player.isWinner ? .win : .sad,
-                                       crown: player.isWinner, aspect: aspect, scale: scale, floor: showsOverlay ? 0.6 : 0.8)
+                                       crown: player.isWinner, look: player.isGirl ? .girl : .boy, aspect: aspect, scale: scale,
+                                       floor: showsOverlay ? 0.6 : 0.8)
         }
     }
 }

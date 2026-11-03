@@ -13,12 +13,10 @@ extension GameLoop {
         let pipeline = pipeline
         let recorder = recorder
         let streamer = tv.cameraStreamer
-        let shots = shots
         let loop = self
         camera.onFrame = { buffer, timestamp in
             recorder.append(buffer, at: timestamp)
             streamer.offer(buffer, at: timestamp)
-            shots.offer(buffer, at: timestamp)
             let analysis = pipeline.process(pixelBuffer: buffer, timestamp: timestamp)
             Task { @MainActor in loop.ingest(analysis) }
         }

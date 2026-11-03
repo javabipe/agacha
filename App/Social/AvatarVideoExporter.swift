@@ -10,6 +10,7 @@ struct AvatarVideoPlayer: Sendable {
     let name: String
     let colorHex: String
     let isWinner: Bool
+    var isGirl = false
 }
 
 /// Tudo que o vídeo de avatares precisa (só números e textos; nenhuma imagem da câmera).
@@ -84,6 +85,7 @@ enum AvatarVideoExporter {
                                       y: (point[1] - job.framing.minY) / job.framing.height)
             }
             var figure = AvatarFigure(joints: mapped, colorHex: player.colorHex, name: player.name)
+            figure.look = player.isGirl ? .girl : .boy
             figure.labelScale = 0.55
             return figure
         }
@@ -110,8 +112,9 @@ enum AvatarVideoExporter {
         return placements.map { placement in
             let win = placement.player.isWinner
             let spec = win ? AvatarPoses.dance(time) : AvatarPoses.sad(time)
+            let look: AvatarLook = placement.player.isGirl ? .girl : .boy
             var figure = AvatarFigure.player(name: placement.player.name, colorHex: placement.player.colorHex, x: placement.x, spec: spec,
-                                             mood: win ? .win : .sad, crown: win, aspect: aspect, scale: scale, floor: 0.72)
+                                             mood: win ? .win : .sad, crown: win, look: look, aspect: aspect, scale: scale, floor: 0.72)
             figure.labelScale = 0.55
             return figure
         }

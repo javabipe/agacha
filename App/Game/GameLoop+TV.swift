@@ -65,7 +65,8 @@ extension GameLoop {
                 if let value = person.skeleton.joints[joint], value.confidence > 0.2 { joints[key] = [rounded(value.x), rounded(value.y)] }
             }
             let ready = stage == .playing || (report.people.first { $0.slot == slot }?.isReady ?? false)
-            return TVState.Figure(name: name(for: slot), color: SlotColors.hex(slot), ready: ready, joints: joints)
+            return TVState.Figure(name: name(for: slot), color: SlotColors.hex(slot), ready: ready, joints: joints,
+                                  look: look(for: slot).rawValue)
         }
         tv.publishPose(TVPose(aspect: analysis.imageSize.width / analysis.imageSize.height, figures: figures))
     }

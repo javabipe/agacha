@@ -48,6 +48,7 @@ struct AvatarHead {
     private func drawFace(in c: inout GraphicsContext, radius r: CGFloat, yaw: Double, edge: CGFloat) {
         let faceShift = CGFloat(yaw) * r * 0.42, squeeze = 1 - 0.3 * CGFloat(abs(yaw))
         if figure.host == .tia { drawLongHair(in: &c, r: r) }
+        if figure.host == nil, figure.look == .girl { drawGirlLocks(in: &c, r: r) }
         func dot(_ x: CGFloat, _ y: CGFloat, _ radius: CGFloat, _ color: Color) {
             c.fill(Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)), with: .color(color))
         }
@@ -75,10 +76,33 @@ struct AvatarHead {
         var shine = Path()
         shine.addArc(center: CGPoint(x: shift, y: 0), radius: r * 0.82, startAngle: .radians(3.7), endAngle: .radians(4.7), clockwise: false)
         c.stroke(shine, with: .color(.white.opacity(0.22)), style: StrokeStyle(lineWidth: r * 0.09, lineCap: .round))
+        if figure.host == nil, figure.look == .girl {
+            drawBow(in: &c, r: r)
+        }
         if figure.host == .tia {
             // Presilha rosa
             c.fill(Path(ellipseIn: CGRect(x: r * 0.45, y: -r * 1.0, width: r * 0.32, height: r * 0.24)), with: .color(Color(hex: "#FF7AB8")))
         }
+    }
+
+    /// Menina: duas mechas compridas dos lados, na cor do cabelo do jogador.
+    private func drawGirlLocks(in c: inout GraphicsContext, r: CGFloat) {
+        for side in [CGFloat(-1), 1] {
+            let lock = CGRect(x: side * r * 1.0 - r * 0.28, y: r * 0.6 - r * 0.9, width: r * 0.56, height: r * 1.8)
+            c.fill(Path(ellipseIn: lock), with: .color(palette.hair))
+        }
+    }
+
+    /// Laço na cor do jogador, no alto da cabeça.
+    private func drawBow(in c: inout GraphicsContext, r: CGFloat) {
+        for side in [CGFloat(-1), 1] {
+            var wing = c
+            wing.translateBy(x: r * 0.5 + side * r * 0.16, y: -r * 0.98)
+            wing.rotate(by: .radians(Double(side) * 0.55))
+            wing.fill(Path(ellipseIn: CGRect(x: -r * 0.2, y: -r * 0.12, width: r * 0.4, height: r * 0.24)), with: .color(palette.base))
+        }
+        c.fill(Path(ellipseIn: CGRect(x: r * 0.5 - r * 0.07, y: -r * 0.98 - r * 0.07, width: r * 0.14, height: r * 0.14)),
+               with: .color(palette.shade(0.7)))
     }
 
     /// Cabelo comprido da tia: aparece atrás da cabeça e dos ombros.
