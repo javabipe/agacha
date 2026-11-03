@@ -87,6 +87,22 @@ import Testing
         recorder.stop()
     }
 
+    @Test func exportsAnMP4FileThatSurvivesResume() async throws {
+        let directory = tempDirectory()
+        let recorder = ClipRecorder(directory: directory)
+        recorder.start()
+        await record(recorder, seconds: 6)
+        let asset = try #require(await recorder.capture(seconds: 3))
+        let url = FileManager.default.temporaryDirectory.appending(path: "export-\(UUID().uuidString).mp4")
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(await recorder.exportMP4(ReplayAsset(asset), to: url))
+        recorder.resume()
+        let data = try Data(contentsOf: url)
+        #expect(data.count > 1000)
+        #expect(String(bytes: data.subdata(in: 4..<8), encoding: .ascii) == "ftyp")
+        recorder.stop()
+    }
+
     @Test func exportsJPEGFramesAndLeavesNoFileBehind() async throws {
         let directory = tempDirectory()
         let recorder = ClipRecorder(directory: directory)

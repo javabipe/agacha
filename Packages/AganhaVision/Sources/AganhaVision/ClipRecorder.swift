@@ -150,6 +150,27 @@ public final class ClipRecorder: @unchecked Sendable {
         return CGImageDestinationFinalize(destination) ? data as Data : nil
     }
 
+    /// Junta o replay num único MP4 (sem recodificar) em `url`, para guardar junto com o momento. O arquivo não fica na pasta
+    /// temporária do gravador, então sobrevive a `resume()`/`stop()`.
+    public func exportMP4(_ replay: ReplayAsset, to url: URL) async -> Bool {
+        try? FileManager.default.removeItem(at: url)
+        guard let session = AVAssetExportSession(asset: replay.asset, presetName: AVAssetExportPresetPassthrough) else { return false }
+        if #available(iOS 18.0, macOS 15.0, tvOS 18.0, *) {
+            do {
+                try await session.export(to: url, as: .mp4)
+                return true
+            } catch {
+                return false
+            }
+        }
+        session.outputURL = url
+        session.outputFileType = .mp4
+        await withCheckedContinuation { continuation in
+            session.exportAsynchronously { continuation.resume() }
+        }
+        return session.status == .completed
+    }
+
     /// Terminou o replay: apaga o que foi gravado e volta a gravar.
     public func resume() {
         lock.withLock {

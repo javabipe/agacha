@@ -12,7 +12,9 @@ struct MomentCard: View {
     @State private var showReal = false
     @State private var liked = false
     @State private var cover: UIImage?
+    @State private var realCover: UIImage?
     @State private var playing = false
+    @State private var playingReal = false
 
     private var shot: UIImage? { moment.shotURLs.first.flatMap { UIImage(contentsOfFile: $0.path) } }
     private var poster: UIImage? { moment.posterURL.flatMap { UIImage(contentsOfFile: $0.path) } }
@@ -20,10 +22,10 @@ struct MomentCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             preview
-            if shot != nil {
+            if shot != nil || moment.realVideoURL != nil {
                 Picker("Imagem", selection: $showReal) {
                     Text("Avatares").tag(false)
-                    Text("Foto real").tag(true)
+                    Text("Real").tag(true)
                 }
                 .pickerStyle(.segmented)
             }
@@ -36,10 +38,18 @@ struct MomentCard: View {
         .task(id: moment.videoURL) {
             if let url = moment.videoURL { cover = await VideoThumbnail.image(for: url) }
         }
+        .task(id: moment.realVideoURL) {
+            if let url = moment.realVideoURL { realCover = await VideoThumbnail.image(for: url, fraction: 0.6) }
+        }
     }
 
     @ViewBuilder private var preview: some View {
-        if showReal, let shot {
+        if showReal, let realCover, let url = moment.realVideoURL {
+            Button { playingReal = true } label: { VideoCover(image: realCover, duration: "0:04") }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Tocar o replay do último movimento")
+                .fullScreenCover(isPresented: $playingReal) { VideoPlayerSheet(url: url, onClose: { playingReal = false }) }
+        } else if showReal, let shot {
             MomentPreview(moment: moment, photo: shot)
         } else if let cover, let url = moment.videoURL {
             Button { playing = true } label: { VideoCover(image: cover, duration: moment.durationText) }

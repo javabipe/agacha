@@ -1,4 +1,5 @@
 import AganhaCore
+import AganhaVision
 import SwiftUI
 import UIKit
 
@@ -14,6 +15,17 @@ extension GameLoop {
         let notable = scoring ? result.scores.values.contains { $0.tier == .perfect } : !result.wrong.isEmpty
         guard notable, let shot = shots.snapshot() else { return }
         shotCandidates.append(shot)
+    }
+
+    /// Fim da partida: guarda os últimos ~4 s da câmera (o replay do último movimento), como o replay do erro.
+    func captureLastMovementClip() {
+        guard settings.saveMoments else { return }
+        let url = FileManager.default.temporaryDirectory.appending(path: "agacha-ultimo-\(UUID().uuidString).mp4")
+        let recorder = recorder
+        momentClipTask = Task {
+            guard let asset = await recorder.capture(seconds: 4) else { return }
+            if await recorder.exportMP4(ReplayAsset(asset), to: url) { momentClipURL = url }
+        }
     }
 
     /// Resultado da partida como um momento (os mesmos dados do placar).
@@ -44,8 +56,14 @@ extension GameLoop {
         let moment = makeMoment(result)
         let poster = Self.renderPoster(moment)
         let job = makeVideoJob(result, moment: moment)
+        let clipTask = momentClipTask
         Task {
-            let saved = await Task.detached { MomentStore.shared.save(moment, poster: poster, shots: photos) }.value
+            // Espera o clipe do último movimento ficar pronto antes de apagar os pedaços gravados da câmera.
+            await clipTask?.value
+            recorder.stop()
+            let clip = momentClipURL
+            momentClipURL = nil
+            let saved = await Task.detached { MomentStore.shared.save(moment, poster: poster, shots: photos, clip: clip) }.value
             lastSavedMoment = saved
             if saved != nil, let job { await generateVideo(job) }
         }

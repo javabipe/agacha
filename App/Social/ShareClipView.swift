@@ -20,6 +20,7 @@ struct ShareClipView: View {
     let onClose: () -> Void
     @State private var media = Media.video
     @State private var cover: UIImage?
+    @State private var realCover: UIImage?
     @State private var playing = false
     @State private var caption = ""
     @State private var showRealKids = false
@@ -55,8 +56,11 @@ struct ShareClipView: View {
             if !hasVideo { media = .photo }
         }
         .task(id: moment.videoURL) { if let url = moment.videoURL { cover = await VideoThumbnail.image(for: url) } }
+        .task(id: moment.realVideoURL) {
+            if let url = moment.realVideoURL { realCover = await VideoThumbnail.image(for: url, fraction: 0.6) }
+        }
         .fullScreenCover(isPresented: $playing) {
-            if let url = moment.videoURL { VideoPlayerSheet(url: url, onClose: { playing = false }) }
+            if let url = playURL { VideoPlayerSheet(url: url, onClose: { playing = false }) }
         }
         .sheet(isPresented: $systemSheet) { ActivityView(items: shareItems) }
         .alert("Mostrar as crianças de verdade?", isPresented: $confirmReal) {
@@ -67,12 +71,23 @@ struct ShareClipView: View {
         }
     }
 
+    /// O vídeo que toca/sai: o replay real do último movimento (se autorizado) ou o vídeo de avatares.
+    private var playURL: URL? {
+        showRealKids ? (moment.realVideoURL ?? moment.videoURL) : moment.videoURL
+    }
+
+    /// Há algo "de verdade" para o interruptor mostrar no modo escolhido (foto real ou replay do último movimento).
+    private var realAvailable: Bool {
+        media == .photo ? !moment.shotURLs.isEmpty : moment.realVideoURL != nil
+    }
+
     private var hasVideo: Bool { moment.videoURL != nil || moment.isSample }
 
     /// Prévia do que vai ser compartilhado: a foto/pôster ou a capa do vídeo (que toca ao tocar).
     @ViewBuilder private var preview: some View {
-        if media == .video, let cover, moment.videoURL != nil {
-            Button { playing = true } label: { VideoCover(image: cover, duration: moment.durationText) }
+        if media == .video, let image = showRealKids ? (realCover ?? cover) : cover, playURL != nil {
+            let length = showRealKids && moment.realVideoURL != nil ? "0:04" : moment.durationText
+            Button { playing = true } label: { VideoCover(image: image, duration: length) }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Tocar o vídeo")
         } else {
@@ -104,7 +119,7 @@ struct ShareClipView: View {
 
     /// O arquivo que sai: o vídeo de avatares ou a imagem (avatares ou foto real) com placar e marca.
     private func currentFile() -> (url: URL, kind: ShareItem.Kind)? {
-        if media == .video, let url = moment.videoURL { return (url, .video) }
+        if media == .video, let url = playURL { return (url, .video) }
         return exportImage().map { ($0, .image) }
     }
 
@@ -114,12 +129,14 @@ struct ShareClipView: View {
     }
 
     private var realCaption: String {
-        if moment.shotURLs.isEmpty {
-            return moment.isSample ? String(localized: "Os exemplos não têm foto real.")
-                : String(localized: "Não há foto real guardada deste momento.")
+        if !realAvailable {
+            if moment.isSample { return String(localized: "Os exemplos não têm imagem real.") }
+            return media == .photo ? String(localized: "Não há foto real guardada deste momento.")
+                : String(localized: "Não há replay real guardado deste momento.")
         }
-        return showRealKids ? String(localized: "Mostra o rosto de quem jogou: só com a autorização dos responsáveis.")
-            : String(localized: "Desligado: o vídeo mostra só os avatares (sem rostos reais).")
+        let what = media == .photo ? String(localized: "a foto real") : String(localized: "o replay do último movimento")
+        return showRealKids ? String(localized: "Mostra \(what) com o rosto de quem jogou: só com a autorização dos responsáveis.")
+            : String(localized: "Desligado: só avatares (sem rostos reais).")
     }
 
     /// Imagem final do momento (avatares ou foto real, com placar e marca), pronta para o share sheet.
@@ -158,7 +175,7 @@ struct ShareClipView: View {
                 .background(.white, in: .rect(cornerRadius: 12))
                 .foregroundStyle(Color(hex: "#1B1433"))
                 .tint(Color(hex: "#1FA98A"))
-            if media == .photo { realToggle }
+            if media == .photo || moment.realVideoURL != nil { realToggle }
         }
     }
 
@@ -170,8 +187,8 @@ struct ShareClipView: View {
                     Text(realCaption).font(.caption).foregroundStyle(showRealKids ? Color(hex: "#FFC845") : Color.aganhaCream.opacity(0.7))
                 }
             }
-            .disabled(moment.shotURLs.isEmpty)
-            if showRealKids, moment.shotURLs.count > 1 {
+            .disabled(!realAvailable)
+            if showRealKids, media == .photo, moment.shotURLs.count > 1 {
                 Button("Trocar foto (\(shotIndex + 1)/\(moment.shotURLs.count))") { shotIndex = (shotIndex + 1) % moment.shotURLs.count }
                     .buttonStyle(.bordered)
             }

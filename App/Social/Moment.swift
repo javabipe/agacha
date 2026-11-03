@@ -28,6 +28,8 @@ struct Moment: Identifiable, Sendable {
     var posterURL: URL?
     /// Vídeo de avatares do momento (aparece depois de gerado).
     var videoURL: URL?
+    /// Replay do último movimento com a câmera (as crianças de verdade): só se compartilha com autorização.
+    var realVideoURL: URL?
     var shotURLs: [URL] = []
 
     init(id: UUID = UUID(), title: String, place: String, ago: String, durationSeconds: Int, views: Int, likes: Int,

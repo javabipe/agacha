@@ -24,6 +24,7 @@ private struct Saved: Codable {
     let posterFile: String?
     let shotFiles: [String]
     var videoFile: String?
+    var clipFile: String?
 }
 
 struct MomentStore: Sendable {
@@ -39,7 +40,7 @@ struct MomentStore: Sendable {
 
     /// Salva o momento (JSON, pôster de avatares e fotos reais). Devolve o momento já apontando para os arquivos.
     @discardableResult
-    func save(_ moment: Moment, poster: Data?, shots: [Data], date: Date = Date()) -> Moment? {
+    func save(_ moment: Moment, poster: Data?, shots: [Data], clip: URL? = nil, date: Date = Date()) -> Moment? {
         let folder = root.appending(path: moment.id.uuidString, directoryHint: .isDirectory)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
@@ -59,13 +60,18 @@ struct MomentStore: Sendable {
                 try shot.write(to: folder.appending(path: name), options: .completeFileProtection)
                 shotFiles.append(name)
             }
+            var clipFile: String?
+            if let clip {
+                try FileManager.default.moveItem(at: clip, to: folder.appending(path: "ultimo-movimento.mp4"))
+                clipFile = "ultimo-movimento.mp4"
+            }
             let saved = Saved(id: moment.id, date: date, title: moment.title, place: moment.place,
                               durationSeconds: moment.durationSeconds, mode: moment.mode, rounds: moment.rounds,
                               fastestMs: moment.fastestMs,
                               players: moment.players.map {
                                   SavedPlayer(name: $0.name, colorHex: $0.colorHex, coins: $0.coins, isWinner: $0.isWinner)
                               },
-                              posterFile: posterFile, shotFiles: shotFiles)
+                              posterFile: posterFile, shotFiles: shotFiles, clipFile: clipFile)
             try JSONEncoder().encode(saved).write(to: folder.appending(path: "moment.json"), options: .completeFileProtection)
             return restore(from: saved)
         } catch {
@@ -128,6 +134,7 @@ struct MomentStore: Sendable {
         moment.posterURL = saved.posterFile.map { folder.appending(path: $0) }
         moment.shotURLs = saved.shotFiles.map { folder.appending(path: $0) }
         moment.videoURL = saved.videoFile.map { folder.appending(path: $0) }
+        moment.realVideoURL = saved.clipFile.map { folder.appending(path: $0) }
         return moment
     }
 }
