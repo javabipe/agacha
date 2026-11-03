@@ -55,9 +55,14 @@ public struct TVState: Codable, Equatable, Sendable {
     /// Resultado ("Paulo errou!", "Arthur venceu!").
     public var message: String?
     public var players: [Player]
+    /// Endereço do vídeo do replay (`/replay.mp4?v=N`), quando pronto. A página acrescenta o código de acesso.
+    public var replay: String?
+    /// Linha pequena de diagnóstico ("mediu 0,36 · precisava ≤ 0,25").
+    public var note: String?
 
     public init(screen: String, word: String? = nil, background: String? = nil, gesture: String? = nil, trick: Bool = false,
-                banner: String? = nil, message: String? = nil, players: [Player] = []) {
+                banner: String? = nil, message: String? = nil, players: [Player] = [],
+                replay: String? = nil, note: String? = nil) {
         self.screen = screen
         self.word = word
         self.background = background
@@ -66,6 +71,8 @@ public struct TVState: Codable, Equatable, Sendable {
         self.banner = banner
         self.message = message
         self.players = players
+        self.replay = replay
+        self.note = note
     }
 
     public func json() -> Data {

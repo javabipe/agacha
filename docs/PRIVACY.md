@@ -34,3 +34,4 @@
 - O vídeo só abre para quem digitar o **endereço com o código** de 4 dígitos mostrado no iPad. O código muda a cada vez que a opção é ligada. É uma proteção simples contra acesso por engano, não criptografia: o tráfego é HTTP, sem TLS, dentro da rede local.
 - Nada disso sai da rede local e nada é gravado. Os avatares enviados à TV continuam sendo só posições do corpo.
 - **Pendente antes da App Store:** imagem de crianças na rede local, mesmo com código, precisa constar na política de privacidade e ser reavaliada para a categoria Kids (por exemplo, exigir parental gate para ligar).
+- O **replay em vídeo** também vai para a TV, só com o mesmo código da câmera e só enquanto o replay está na tela. O arquivo temporário é apagado logo após ser lido; o vídeo fica na memória do app até a rodada seguir e é descartado.
