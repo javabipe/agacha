@@ -145,7 +145,7 @@ final class GameLoop {
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
                                 maxErrors: settings.maxErrors, displayDelay: settings.tvDelay, solo: settings.solo,
-                                mode: settings.mode, scoreRounds: settings.scoreRounds)
+                                mode: settings.mode, scoreRounds: settings.scoreRounds, doubles: settings.doubles)
         if settings.recordReplay, settings.mode == .elimination { recorder.start() }
         send(.start(config))
     }
@@ -246,6 +246,14 @@ final class GameLoop {
             await audio.play("cmd_\(set.audioID(for: command.word))", fallbackText: set.text(for: command.word)) {
                 self.shownCommand = command
                 self.send(.commandAudioStarted(at: Self.now()))
+            }
+            // Comando duplo: a segunda palavra vem logo em seguida, sem a pausa de uma rodada normal.
+            guard let follow = command.followUp, let second = command.secondStep, !Task.isCancelled else { return }
+            if follow.gapMs > 0 { try? await Task.sleep(for: .milliseconds(follow.gapMs)) }
+            guard !Task.isCancelled else { return }
+            await audio.play("cmd_\(set.audioID(for: follow.word))", fallbackText: set.text(for: follow.word)) {
+                self.shownCommand = second
+                self.send(.followUpAudioStarted(at: Self.now()))
             }
         }
     }

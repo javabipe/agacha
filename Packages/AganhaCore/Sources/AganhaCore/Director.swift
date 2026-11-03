@@ -22,10 +22,21 @@ public struct Director: Sendable, Equatable {
         /// A janela encolhe esta fração a cada comando, até `windowFloor` do valor da tolerância.
         var windowShrink: Double
         var windowFloor: Double
+        /// Comandos duplos: primeiro comando em que podem vir (nil = nunca), chance e silêncio entre as duas palavras.
+        var doubleFromNumber: Int?
+        var doubleStart = 0.0
+        var doubleGrowth = 0.0
+        var doubleMax = 0.0
+        var doubleGapMs = 250
 
         func trickChance(at number: Int) -> Double {
             guard let from = trickFromNumber, number >= from else { return 0 }
             return min(trickMax, trickStart + trickGrowth * Double(number - from))
+        }
+
+        func doubleChance(at number: Int) -> Double {
+            guard let from = doubleFromNumber, number >= from else { return 0 }
+            return min(doubleMax, doubleStart + doubleGrowth * Double(number - from))
         }
 
         func chainChance(at number: Int) -> Double {
@@ -40,15 +51,18 @@ public struct Director: Sendable, Equatable {
     public let difficulty: Difficulty
     public let tolerance: Tolerance
     public let seed: UInt64
+    /// Permite comandos duplos (só nos níveis que os têm, e só depois de algumas rodadas).
+    public let allowsDoubles: Bool
 
     private let profile: Profile
     private var rng: SeededGenerator
     private var previous: Command?
 
-    public init(difficulty: Difficulty, tolerance: Tolerance = .normal, seed: UInt64) {
+    public init(difficulty: Difficulty, tolerance: Tolerance = .normal, seed: UInt64, allowsDoubles: Bool = false) {
         self.difficulty = difficulty
         self.tolerance = tolerance
         self.seed = seed
+        self.allowsDoubles = allowsDoubles
         rng = SeededGenerator(seed: seed)
         profile = Self.profile(for: difficulty)
     }
@@ -63,12 +77,14 @@ public struct Director: Sendable, Equatable {
             Profile(gapStart: 1500, gapStep: 80, gapFloor: 500, trickFromNumber: 2,
                     trickStart: 0.25, trickGrowth: 0.02, trickMax: 0.55, repeatChance: 0.25,
                     chainFromNumber: 8, chainStart: 0.10, chainGrowth: 0.02, chainMax: 0.30,
-                    allowsConsecutiveTricks: false, windowShrink: 0.03, windowFloor: 0.75)
+                    allowsConsecutiveTricks: false, windowShrink: 0.03, windowFloor: 0.75,
+                    doubleFromNumber: 6, doubleStart: 0.12, doubleGrowth: 0.02, doubleMax: 0.30, doubleGapMs: 250)
         case .furacao:
             Profile(gapStart: 1000, gapStep: 50, gapFloor: 250, trickFromNumber: 1,
                     trickStart: 0.50, trickGrowth: 0.02, trickMax: 0.75, repeatChance: 0.30,
                     chainFromNumber: 1, chainStart: 0.30, chainGrowth: 0.01, chainMax: 0.45,
-                    allowsConsecutiveTricks: true, windowShrink: 0.04, windowFloor: 0.65)
+                    allowsConsecutiveTricks: true, windowShrink: 0.04, windowFloor: 0.65,
+                    doubleFromNumber: 4, doubleStart: 0.20, doubleGrowth: 0.02, doubleMax: 0.45, doubleGapMs: 100)
         }
     }
 
@@ -76,14 +92,24 @@ public struct Director: Sendable, Equatable {
     public mutating func next() -> Command {
         let number = (previous?.number ?? 0) + 1
 
-        let repeats = previous != nil && roll(profile.repeatChance)
-        let word: Stance = if let previous { repeats ? previous.word : previous.word.opposite } else { .up }
+        let lastWord = previous?.finalWord
+        let repeats = lastWord != nil && roll(profile.repeatChance)
+        let word: Stance = if let lastWord { repeats ? lastWord : lastWord.opposite } else { .up }
 
         var trick = false
         if roll(profile.trickChance(at: number)) {
             trick = profile.allowsConsecutiveTricks || previous?.isTrick != true
         }
         let gesture = trick ? word.opposite : word
+
+        // Duplo: duas palavras seguidas, quase sempre contrárias, para pegar quem reage sem prestar atenção.
+        // Não vem em cima de um truque nem de outro duplo.
+        var followUp: FollowUp?
+        if allowsDoubles, !trick, previous?.followUp == nil, roll(profile.doubleChance(at: number)) {
+            let second: Stance = roll(0.75) ? word.opposite : word
+            let risesFirst = lastWord == .down && word == .up
+            followUp = FollowUp(word: second, gapMs: profile.doubleGapMs, graceMs: 250 + (risesFirst ? tolerance.riseExtraMs : 0))
+        }
 
         let chains = roll(profile.chainChance(at: number)) && previous?.chainsToNext != true
         let gap = chains
@@ -92,7 +118,8 @@ public struct Director: Sendable, Equatable {
 
         let command = Command(number: number, word: word, gesture: gesture, isRepeat: repeats,
                               gapMs: gap, chainsToNext: chains,
-                              windowMs: windowMs(for: number) + riseExtra(word: word), cue: cue(for: number))
+                              windowMs: windowMs(for: number) + (followUp.map { riseBetween(word, $0.word) } ?? riseExtra(word: word)),
+                              cue: cue(for: number), followUp: followUp)
         previous = command
         return command
     }
@@ -107,7 +134,12 @@ public struct Director: Sendable, Equatable {
     /// Janela do comando: a tolerância escolhida, encolhendo um pouco a cada comando nos níveis mais difíceis.
     /// Quem estava agachado (comando anterior "para baixo") e agora deve ficar em pé precisa de mais tempo.
     private func riseExtra(word: Stance) -> Int {
-        previous?.word == .down && word == .up ? tolerance.riseExtraMs : 0
+        previous?.finalWord == .down && word == .up ? tolerance.riseExtraMs : 0
+    }
+
+    /// Entre as duas palavras de um duplo: quem acabou de agachar e agora levanta precisa de mais tempo.
+    private func riseBetween(_ first: Stance, _ second: Stance) -> Int {
+        first == .down && second == .up ? tolerance.riseExtraMs : 0
     }
 
     private func windowMs(for number: Int) -> Int {

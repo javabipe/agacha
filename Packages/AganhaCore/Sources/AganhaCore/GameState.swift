@@ -18,11 +18,14 @@ public struct GameConfig: Sendable, Equatable {
     /// Rodadas da partida no modo pontuação.
     public var scoreRounds: Int
     public var scoreRules: ScoreRules
+    /// Comandos duplos ("Vivo! Morto!") quando o ritmo sobe.
+    public var doubles: Bool
 
     public init(slots: [ChildSlot], difficulty: Difficulty = .sapeca, tolerance: Tolerance = .normal,
                 commandSet: CommandSet = .classic, seed: UInt64, maxAbsentStreak: Int = 3,
                 rules: JudgeRules = JudgeRules(), maxErrors: Int = 1, displayDelay: Double = 0, solo: Bool = false,
-                mode: GameMode = .elimination, scoreRounds: Int = 10, scoreRules: ScoreRules = ScoreRules()) {
+                mode: GameMode = .elimination, scoreRounds: Int = 10, scoreRules: ScoreRules = ScoreRules(),
+                doubles: Bool = false) {
         self.slots = slots
         self.difficulty = difficulty
         self.tolerance = tolerance
@@ -36,6 +39,7 @@ public struct GameConfig: Sendable, Equatable {
         self.mode = mode
         self.scoreRounds = min(max(1, scoreRounds), 50)
         self.scoreRules = scoreRules
+        self.doubles = doubles
     }
 }
 
@@ -57,6 +61,13 @@ public struct PlayerState: Sendable, Equatable {
     public var bestReactionMs: Int?
 
     public var averageReactionMs: Int? { reactionCount == 0 ? nil : reactionTotalMs / reactionCount }
+
+    mutating func addReaction(_ ms: Int?) {
+        guard let ms else { return }
+        reactionTotalMs += ms
+        reactionCount += 1
+        bestReactionMs = min(bestReactionMs ?? ms, ms)
+    }
 
     public init() {}
 }
@@ -85,6 +96,8 @@ public struct RoundResult: Sendable, Equatable {
     public let finished: GameResult?
     /// Modo pontuação: o que cada jogador ganhou nesta rodada (vazio na eliminação).
     public var scores: [ChildSlot: RoundScore] = [:]
+    /// Qual palavra o jogador devia estar cumprindo quando errou (num comando duplo pode ser a primeira).
+    public var failedWords: [ChildSlot: Stance] = [:]
 }
 
 public enum GamePhase: Sendable, Equatable {
@@ -105,6 +118,8 @@ public enum GameAction: Sendable {
     case windowClosed
     /// Botão "Foi injusto!": desfaz a rodada e sorteia outro comando, sem eliminar ninguém.
     case unfair
+    /// Comando duplo: a segunda palavra começou a ser dita.
+    case followUpAudioStarted(at: Double)
     /// "Continuar" depois do resultado.
     case next
     case quit
@@ -133,6 +148,8 @@ public struct GameState: Sendable, Equatable {
     var snapshot: [ChildSlot: PlayerState] = [:]
     /// Diretor antes de sortear o comando atual ("Foi injusto!" repete o mesmo comando, sem pular a numeração).
     var directorSnapshot: Director?
+    /// Comando duplo: instante (já com o atraso da TV) em que a segunda palavra começa para os jogadores.
+    var followStart: Double?
 
     public init() {}
 

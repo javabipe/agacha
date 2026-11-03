@@ -65,4 +65,6 @@ public struct RoundScore: Sendable, Equatable {
     public let multiplier: Int
     /// Acertos seguidos até aqui (0 se errou).
     public let combo: Int
+    /// Comando duplo: as moedas somam as duas palavras.
+    public var isDouble = false
 }

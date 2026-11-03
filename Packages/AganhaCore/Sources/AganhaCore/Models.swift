@@ -112,6 +112,22 @@ public enum Cue: String, Codable, Sendable, Equatable {
     case harder
 }
 
+/// Segunda palavra de um comando duplo ("Vivo! Morto!"), dita logo depois da primeira, sem pausa de verdade.
+public struct FollowUp: Sendable, Equatable {
+    public let word: Stance
+    /// Silêncio (ms) entre o fim da primeira palavra e o começo da segunda.
+    public let gapMs: Int
+    /// Tempo (ms) depois do início da segunda palavra em que a primeira ainda é julgada
+    /// (reagir ao ouvir a segunda leva um instante; quem vinha agachado precisa de mais tempo para levantar).
+    public let graceMs: Int
+
+    public init(word: Stance, gapMs: Int, graceMs: Int) {
+        self.word = word
+        self.gapMs = gapMs
+        self.graceMs = graceMs
+    }
+}
+
 /// Um comando da tia. A palavra falada (`word`) é o que vale para o julgamento;
 /// o gesto (`gesture`) pode ser o contrário, e então é um truque.
 public struct Command: Sendable, Equatable {
@@ -128,12 +144,25 @@ public struct Command: Sendable, Equatable {
     public let windowMs: Int
     /// Aviso falado antes deste comando quando o ritmo sobe ("Mais rápido!", "Agora vai ficar difícil!").
     public let cue: Cue?
+    /// Comando duplo: o jogador cumpre `word` e, logo em seguida, `followUp.word`. A `windowMs` vale para a segunda palavra.
+    public let followUp: FollowUp?
 
     public var isTrick: Bool { word != gesture }
 
+    /// Postura em que o jogador termina o comando.
+    public var finalWord: Stance { followUp?.word ?? word }
+
+    /// A segunda palavra de um comando duplo como um comando comum (para mostrar na tela).
+    public var secondStep: Command? {
+        guard let followUp else { return nil }
+        return Command(number: number, word: followUp.word, gesture: followUp.word, isRepeat: followUp.word == word,
+                       gapMs: gapMs, chainsToNext: chainsToNext, windowMs: windowMs)
+    }
+
     public init(number: Int, word: Stance, gesture: Stance, isRepeat: Bool, gapMs: Int,
-                chainsToNext: Bool, windowMs: Int, cue: Cue? = nil) {
+                chainsToNext: Bool, windowMs: Int, cue: Cue? = nil, followUp: FollowUp? = nil) {
         self.cue = cue
+        self.followUp = followUp
         self.number = number
         self.word = word
         self.gesture = gesture

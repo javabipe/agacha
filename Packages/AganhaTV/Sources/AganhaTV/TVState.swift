@@ -14,8 +14,11 @@ public struct TVState: Codable, Equatable, Sendable {
         public var total: Int
         public var combo: Int
         public var multiplier: Int
+        /// A rodada foi um comando duplo.
+        public var double: Bool
 
-        public init(name: String, color: String, tier: String, ms: Int?, gain: Int, total: Int, combo: Int, multiplier: Int) {
+        public init(name: String, color: String, tier: String, ms: Int?, gain: Int, total: Int, combo: Int, multiplier: Int,
+                    double: Bool = false) {
             self.name = name
             self.color = color
             self.tier = tier
@@ -24,6 +27,7 @@ public struct TVState: Codable, Equatable, Sendable {
             self.total = total
             self.combo = combo
             self.multiplier = multiplier
+            self.double = double
         }
     }
 
@@ -111,10 +115,12 @@ public struct TVState: Codable, Equatable, Sendable {
     public var note: String?
     /// Modo pontuação: moedas e resultado da última rodada de cada jogador.
     public var score: Score?
+    /// Fim de partida: quem ganhou (dança da vitória); os outros choram. nil = sem animação.
+    public var winners: [String]?
 
     public init(screen: String, word: String? = nil, background: String? = nil, gesture: String? = nil, trick: Bool = false,
                 banner: String? = nil, message: String? = nil, players: [Player] = [],
-                replay: Replay? = nil, note: String? = nil, score: Score? = nil) {
+                replay: Replay? = nil, note: String? = nil, score: Score? = nil, winners: [String]? = nil) {
         self.screen = screen
         self.word = word
         self.background = background
@@ -126,6 +132,7 @@ public struct TVState: Codable, Equatable, Sendable {
         self.replay = replay
         self.note = note
         self.score = score
+        self.winners = winners
     }
 
     public func json() -> Data {

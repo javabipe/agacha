@@ -18,16 +18,15 @@ public enum GameReducer {
         case let .commandAudioStarted(time):
             return openWindow(&state, audioStart: time)
 
+        case let .followUpAudioStarted(time):
+            return startFollowUp(&state, audioStart: time)
+
         case let .postureSamples(samples):
             record(&state, samples)
             return []
 
         case .windowClosed:
-            guard case let .window(command, opens, closes) = state.phase else { return [] }
-            if state.config?.mode == .score {
-                return judgeScore(&state, command: command, commandStart: opens - windowOpensAfter, windowEnd: closes)
-            }
-            return judge(&state, command: command, windowEnd: closes)
+            return closeWindow(&state)
 
         case .unfair:
             guard case .result = state.phase, state.config?.mode != .score else { return [] }
@@ -67,7 +66,8 @@ public enum GameReducer {
         state = GameState()
         state.config = config
         state.players = Dictionary(uniqueKeysWithValues: config.slots.map { ($0, PlayerState()) })
-        state.director = Director(difficulty: config.difficulty, tolerance: config.tolerance, seed: config.seed)
+        state.director = Director(difficulty: config.difficulty, tolerance: config.tolerance, seed: config.seed,
+                                  allowsDoubles: config.doubles)
         state.phase = .countdown
         return [.startCountdown]
     }
@@ -77,7 +77,41 @@ public enum GameReducer {
         let opens = audioStart + windowOpensAfter + (state.config?.displayDelay ?? 0)
         let closes = opens + Double(command.windowMs) / 1000
         state.phase = .window(command, opensAt: opens, closesAt: closes)
+        // Duplo: quem fecha a janela é o início da segunda palavra (`followUpAudioStarted`).
+        return command.followUp == nil ? [.scheduleWindowClose(at: closes)] : []
+    }
+
+    private static func closeWindow(_ state: inout GameState) -> [GameEffect] {
+        guard case let .window(command, opens, closes) = state.phase else { return [] }
+        // Comando duplo: só julga depois que a segunda palavra começou.
+        if command.followUp != nil, state.followStart == nil { return [] }
+        if state.config?.mode == .score {
+            return judgeScore(&state, command: command, commandStart: opens - windowOpensAfter, windowEnd: closes)
+        }
+        return judge(&state, command: command, windowEnd: closes)
+    }
+
+    private static func startFollowUp(_ state: inout GameState, audioStart: Double) -> [GameEffect] {
+        guard case let .window(command, opens, _) = state.phase, command.followUp != nil, state.followStart == nil else { return [] }
+        let start = audioStart + (state.config?.displayDelay ?? 0)
+        let closes = start + windowOpensAfter + Double(command.windowMs) / 1000
+        state.followStart = start
+        state.phase = .window(command, opensAt: opens, closesAt: closes)
         return [.scheduleWindowClose(at: closes)]
+    }
+
+    /// Julga uma criança num comando (num duplo, as duas palavras): quem falha na primeira erra mesmo que acerte a segunda.
+    /// A primeira palavra vale até `graceMs` depois que a segunda começou; "ausente" na primeira não conta contra.
+    private static func assess(_ state: GameState, slot: ChildSlot, command: Command, windowEnd: Double) -> (Judge.Assessment, Stance) {
+        let samples = state.samples[slot] ?? []
+        let rules = state.config?.rules ?? JudgeRules()
+        guard let follow = command.followUp, let followStart = state.followStart else {
+            return (Judge.assess(expected: command.word, samples: samples, windowEnd: windowEnd, rules: rules), command.word)
+        }
+        let first = Judge.assess(expected: command.word, samples: samples, windowEnd: followStart + Double(follow.graceMs) / 1000,
+                                 rules: rules)
+        if first.verdict == .wrong { return (first, command.word) }
+        return (Judge.assess(expected: follow.word, samples: samples, windowEnd: windowEnd, rules: rules), follow.word)
     }
 
     private static func record(_ state: inout GameState, _ samples: [PostureSample]) {
@@ -94,6 +128,7 @@ public enum GameReducer {
         state.director = director
         state.round += 1
         state.samples = [:]
+        state.followStart = nil
         state.snapshot = state.players
         state.phase = .announcing(command)
         return [.playCommand(command)]
@@ -106,12 +141,13 @@ public enum GameReducer {
         var details: [ChildSlot: Judge.Assessment] = [:]
         var eliminated: [ChildSlot] = []
         var wrong: [ChildSlot] = []
+        var failedWords: [ChildSlot: Stance] = [:]
         let maxErrors = state.config?.maxErrors ?? 1
 
         for slot in before {
-            let assessment = Judge.assess(expected: command.word, samples: state.samples[slot] ?? [], windowEnd: windowEnd,
-                                          rules: state.config?.rules ?? JudgeRules())
+            let (assessment, expectedWord) = assess(state, slot: slot, command: command, windowEnd: windowEnd)
             let verdict = assessment.verdict
+            if verdict == .wrong { failedWords[slot] = expectedWord }
             verdicts[slot] = verdict
             details[slot] = assessment
             var player = state.players[slot] ?? PlayerState()
@@ -158,7 +194,7 @@ public enum GameReducer {
 
         let result = RoundResult(command: command, verdicts: verdicts, details: details, wrong: wrong.sorted(),
                                  eliminated: eliminated.sorted(),
-                                 survivors: survivors, isTie: isTie, finished: finished)
+                                 survivors: survivors, isTie: isTie, finished: finished, failedWords: failedWords)
         state.history.append(result)
         state.phase = .result(result)
         return [.showResult(result)]
@@ -169,61 +205,87 @@ public enum GameReducer {
                                    windowEnd: Double) -> [GameEffect] {
         guard let config = state.config else { return [] }
         let rules = config.scoreRules
-        let rising = state.history.last?.command.word == .down && command.word == .up
+        let rising = state.history.last?.command.finalWord == .down && command.word == .up
         var verdicts: [ChildSlot: Verdict] = [:]
         var details: [ChildSlot: Judge.Assessment] = [:]
         var scores: [ChildSlot: RoundScore] = [:]
+        var failedWords: [ChildSlot: Stance] = [:]
         var missed: [ChildSlot] = []
 
         for slot in state.players.keys.sorted() {
             let samples = state.samples[slot] ?? []
-            let assessment = Judge.assess(expected: command.word, samples: samples, windowEnd: windowEnd, rules: config.rules)
+            let (assessment, expectedWord) = assess(state, slot: slot, command: command, windowEnd: windowEnd)
             verdicts[slot] = assessment.verdict
             details[slot] = assessment
             var player = state.players[slot] ?? PlayerState()
             guard assessment.verdict == .ok else {
-                if assessment.verdict == .wrong { player.errors += 1 }
+                if assessment.verdict == .wrong {
+                    player.errors += 1
+                    failedWords[slot] = expectedWord
+                }
                 player.combo = 0
                 missed.append(slot)
                 scores[slot] = RoundScore(tier: .miss, reactionMs: nil, coins: 0, multiplier: 1, combo: 0)
                 state.players[slot] = player
                 continue
             }
-            var tier = ScoreTier.good
-            var reactionMs: Int?
-            switch Judge.settle(expected: command.word, samples: samples, windowEnd: windowEnd, rules: config.rules) {
-            case .held:
-                tier = .held
-            case let .at(time):
-                let ms = max(0, Int(((time - commandStart) * 1000).rounded()))
-                reactionMs = ms
-                tier = rules.tier(reactionMs: ms, rising: rising)
-            case .never:
-                break
+            // Num duplo valem as duas palavras: as moedas somam e o tempo mostrado é o da segunda.
+            var steps = [Step(expected: command.word, start: commandStart, end: windowEnd, rising: rising)]
+            if let follow = command.followUp, let followStart = state.followStart {
+                let firstEnd = followStart + Double(follow.graceMs) / 1000
+                let risesSecond = command.word == .down && follow.word == .up
+                steps = [Step(expected: command.word, start: commandStart, end: firstEnd, rising: rising),
+                         Step(expected: follow.word, start: followStart, end: windowEnd, rising: risesSecond)]
+            }
+            var base = 0
+            var shown = (tier: ScoreTier.good, ms: Int?.none)
+            for step in steps {
+                let outcome = reaction(step, samples: samples, scoreRules: rules, judgeRules: config.rules)
+                base += rules.baseCoins(for: outcome.tier)
+                shown = outcome
             }
             player.combo += 1
             player.bestCombo = max(player.bestCombo, player.combo)
             let multiplier = rules.multiplier(forCombo: player.combo)
-            let coins = rules.baseCoins(for: tier) * multiplier
+            let coins = base * multiplier
             player.coins += coins
             player.points += coins
             player.correct += 1
-            if let reactionMs {
-                player.reactionTotalMs += reactionMs
-                player.reactionCount += 1
-                player.bestReactionMs = min(player.bestReactionMs ?? reactionMs, reactionMs)
-            }
-            scores[slot] = RoundScore(tier: tier, reactionMs: reactionMs, coins: coins, multiplier: multiplier, combo: player.combo)
+            player.addReaction(shown.ms)
+            scores[slot] = RoundScore(tier: shown.tier, reactionMs: shown.ms, coins: coins, multiplier: multiplier,
+                                      combo: player.combo, isDouble: command.followUp != nil)
             state.players[slot] = player
         }
 
         let finished: GameResult? = state.round >= config.scoreRounds ? makeScoreResult(state) : nil
         var result = RoundResult(command: command, verdicts: verdicts, details: details, wrong: missed.sorted(), eliminated: [],
-                                 survivors: state.survivors, isTie: false, finished: finished)
+                                 survivors: state.survivors, isTie: false, finished: finished, failedWords: failedWords)
         result.scores = scores
         state.history.append(result)
         state.phase = .result(result)
         return [.showResult(result)]
+    }
+
+    /// Uma palavra a cumprir: de `start` até `end`; `rising` = vinha agachado e precisa levantar.
+    private struct Step {
+        let expected: Stance
+        let start: Double
+        let end: Double
+        let rising: Bool
+    }
+
+    /// Faixa e tempo de reação de uma palavra: do começo dela até o jogador ficar na postura certa.
+    private static func reaction(_ step: Step, samples: [PostureSample], scoreRules: ScoreRules,
+                                 judgeRules: JudgeRules) -> (tier: ScoreTier, ms: Int?) {
+        switch Judge.settle(expected: step.expected, samples: samples, windowEnd: step.end, rules: judgeRules) {
+        case .held:
+            return (.held, nil)
+        case let .at(time):
+            let ms = max(0, Int(((time - step.start) * 1000).rounded()))
+            return (scoreRules.tier(reactionMs: ms, rising: step.rising), ms)
+        case .never:
+            return (.good, nil)
+        }
     }
 
     /// Mais moedas vence (empate de moedas = empate); na lista, desempata quem teve a média de reação mais rápida.

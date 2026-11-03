@@ -66,7 +66,8 @@ struct EliminatedView: View {
     private func measurement(for slot: ChildSlot) -> String? {
         guard let index = info.result.details[slot]?.crouchIndex, let rules = loop.state.config?.rules else { return nil }
         let measured = index.formatted(.number.precision(.fractionLength(2)))
-        let needed = info.result.command.word == .up ? "≤ \(rules.standMax)" : "≥ \(rules.crouchMin)"
+        let word = info.result.failedWords[slot] ?? info.result.command.word
+        let needed = word == .up ? "≤ \(rules.standMax)" : "≥ \(rules.crouchMin)"
         return "mediu \(measured) · precisava \(needed)"
     }
 
@@ -132,7 +133,8 @@ private struct GameCard: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text(commandSet.text(for: command.word))
+            Text(command.followUp.map { "\(commandSet.text(for: command.word)) \(commandSet.text(for: $0.word))" }
+                 ?? commandSet.text(for: command.word))
                 .font(.system(size: 30, weight: .black, design: .rounded))
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)

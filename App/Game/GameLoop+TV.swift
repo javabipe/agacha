@@ -78,7 +78,8 @@ extension GameLoop {
                 let score = lastScore(for: slot)
                 return TVState.ScoreEntry(name: name(for: slot), color: SlotColors.hex(slot), tier: score?.tier.rawValue ?? "",
                                            ms: score?.reactionMs, gain: score?.coins ?? 0, total: player?.coins ?? 0,
-                                           combo: player?.combo ?? 0, multiplier: score?.multiplier ?? 1)
+                                           combo: player?.combo ?? 0, multiplier: score?.multiplier ?? 1,
+                                           double: score?.isDouble ?? false)
             }
             tvState.score = TVState.Score(round: state.history.count, rounds: config.scoreRounds, entries: entries)
         }
@@ -104,12 +105,14 @@ extension GameLoop {
             }
             if case .gameOver = state.phase, state.config?.solo == true {
                 let summary = isScoreMode ? "Fim: \(soloScore) moedas!" : "Fim do treino: \(soloScore) acertos!"
-                return TVState(screen: "gameover", message: summary, players: players)
+                // Só um recorde faz o treino solo comemorar; senão a tela fica como está.
+                let hero = soloIsRecord ? state.config?.slots.first.map { [name(for: $0)] } : nil
+                return TVState(screen: "gameover", message: summary, players: players, winners: hero)
             }
             if case let .gameOver(result) = state.phase {
                 let winners = result.winners.map { name(for: $0) }
                 let message = result.isTie ? "Empate!" : "\(winners.first ?? "") venceu!"
-                return TVState(screen: "gameover", message: message, players: players)
+                return TVState(screen: "gameover", message: message, players: players, winners: winners)
             }
             if let info = resultInfo {
                 let who = Self.joined(info.result.wrong.map { name(for: $0) })
@@ -137,7 +140,8 @@ extension GameLoop {
     private func measurementNote(_ info: ResultInfo) -> String? {
         guard let slot = info.result.wrong.first, let index = info.result.details[slot]?.crouchIndex,
               let rules = state.config?.rules else { return nil }
-        let needed = info.result.command.word == .up ? "≤ \(rules.standMax)" : "≥ \(rules.crouchMin)"
+        let word = info.result.failedWords[slot] ?? info.result.command.word
+        let needed = word == .up ? "≤ \(rules.standMax)" : "≥ \(rules.crouchMin)"
         return "\(name(for: slot)): mediu \(index.formatted(.number.precision(.fractionLength(2)))) · precisava \(needed)"
     }
 }

@@ -142,6 +142,34 @@ enum TVPage {
       }
       g.restore();
     }
+    // Elipse com contorno (sem depender de ctx.ellipse, que TVs antigas não têm).
+    function oval(g, x, y, rx, ry, rot, fill, edge, ew){
+      var pass;
+      for (pass = 0; pass < 2; pass++) {
+        if (!pass && !edge) continue;
+        g.save(); g.translate(x, y); g.rotate(rot); g.scale(pass ? rx : rx + ew / 2, pass ? ry : ry + ew / 2);
+        g.fillStyle = pass ? fill : edge; g.beginPath(); g.arc(0, 0, 1, 0, 6.2832); g.fill(); g.restore();
+      }
+    }
+    // Tênis: o Vision só dá o tornozelo, então o pé é deduzido: a canela inclina o tênis, o calcanhar sobe quando
+    // o joelho dobra muito (agachado), e o pé que sobe mais que o outro aparece levantado.
+    function foot(g, ankle, knee, hip, other, side, u, color, ew){
+      if (!ankle) return;
+      var tilt = knee ? Math.atan2(ankle[1] - knee[1], ankle[0] - knee[0]) - 1.5708 : 0;
+      var heel = 0;
+      if (knee && hip) { var shin = Math.max(u * 0.2, ankle[1] - knee[1]); heel = clamp(1 - (knee[1] - hip[1]) / shin, 0, 1); }
+      var lift = other ? clamp((other[1] - ankle[1]) / u, 0, 1.2) : 0;
+      var rot = side * 0.18 + tilt * 0.8 + side * lift * 0.5 + heel * side * 0.1;
+      var cx = ankle[0] + side * u * 0.1, cy = ankle[1] + u * (0.1 - heel * 0.1);
+      g.save(); g.translate(cx, cy); g.rotate(rot); g.scale(1, 1 - heel * 0.3 - lift * 0.1);
+      oval(g, 0, u * 0.12, u * 0.4, u * 0.17, 0, '#2B2140', null, 0);
+      oval(g, side * u * 0.02, u * 0.04, u * 0.38, u * 0.19, 0, '#F6F6FA', INK, ew);
+      oval(g, side * u * 0.22, u * 0.07, u * 0.17, u * 0.12, 0, color, null, 0);
+      g.strokeStyle = '#B9B9C8'; g.lineWidth = Math.max(1, u * 0.035); g.lineCap = 'round';
+      for (var i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-u * 0.12 + i * u * 0.1, -u * 0.06); g.lineTo(-u * 0.12 + i * u * 0.1 + side * u * 0.03, u * 0.03); g.stroke(); }
+      oval(g, -side * u * 0.12, -u * 0.07, u * 0.12, u * 0.06, 0, '#4B4166', null, 0);
+      g.restore();
+    }
     function drawHead(g, f, J, r, hair, ew, excited){
       var nose = J.nose, eL = J.eyeL, eR = J.eyeR, aL = J.earL, aR = J.earR, i;
       var roll = 0, cx, cy, yaw = 0;
@@ -176,29 +204,66 @@ enum TVPage {
       var ex = r * 0.38 * squeeze, ey = r * 0.02 - (excited ? r * 0.03 : 0);
       dot(g, [fx - r * 0.64 * squeeze, r * 0.4], r * 0.17, 'rgba(255,110,120,0.38)');
       dot(g, [fx + r * 0.64 * squeeze, r * 0.4], r * 0.17, 'rgba(255,110,120,0.38)');
-      if (blinking) {
+      var sad = f.mood === 'sad';
+      if (blinking && !sad) {
         g.strokeStyle = INK; g.lineWidth = Math.max(1.5, r * 0.08);
         g.beginPath(); g.moveTo(fx - ex - r * 0.14, ey); g.lineTo(fx - ex + r * 0.14, ey);
         g.moveTo(fx + ex - r * 0.14, ey); g.lineTo(fx + ex + r * 0.14, ey); g.stroke();
       } else {
         for (i = -1; i <= 1; i += 2) {
           var x = fx + i * ex;
-          dot(g, [x, ey], r * 0.19, '#fff');
-          dot(g, [x + yaw * r * 0.05, ey + r * 0.02], r * 0.115, INK);
-          dot(g, [x + yaw * r * 0.05 - r * 0.035, ey - r * 0.03], r * 0.04, '#fff');
+          dot(g, [x, ey], r * (sad ? 0.22 : 0.19), '#fff');
+          dot(g, [x + yaw * r * 0.05, ey + r * (sad ? 0.05 : 0.02)], r * (sad ? 0.14 : 0.115), INK);
+          dot(g, [x + yaw * r * 0.05 - r * 0.04, ey - r * 0.02], r * (sad ? 0.055 : 0.04), '#fff');
+          if (sad) { dot(g, [x + r * 0.05, ey + r * 0.09], r * 0.025, '#fff'); }
         }
       }
       g.strokeStyle = INK; g.lineWidth = Math.max(1.5, r * 0.07);
       var lift = excited ? r * 0.1 : 0;
       for (i = -1; i <= 1; i += 2) {
+        if (sad) {
+          g.beginPath(); g.moveTo(fx + i * (ex + r * 0.17), ey - r * 0.27); g.lineTo(fx + i * (ex - r * 0.16), ey - r * 0.4); g.stroke();
+          continue;
+        }
         g.beginPath(); g.moveTo(fx + i * ex - r * 0.15, ey - r * 0.3 - lift); g.quadraticCurveTo(fx + i * ex, ey - r * 0.38 - lift, fx + i * ex + r * 0.15, ey - r * 0.3 - lift); g.stroke();
       }
       // boca: sorriso; aberta e alegre quando os braços estão para cima
-      if (excited) {
+      if (sad) {
+        var wail = f.sob || 0;
+        if (wail > 0.25) {
+          g.fillStyle = INK; g.save(); g.translate(fx, r * 0.48); g.scale(r * 0.2, r * (0.08 + 0.2 * wail)); g.beginPath(); g.arc(0, 0, 1, 0, 6.2832); g.fill(); g.restore();
+          g.fillStyle = '#FF7A8A'; g.save(); g.translate(fx, r * (0.48 + 0.1 * wail)); g.scale(r * 0.12, r * 0.06 * wail); g.beginPath(); g.arc(0, 0, 1, 0, 6.2832); g.fill(); g.restore();
+        } else {
+          g.beginPath(); g.arc(fx, r * 0.62, r * 0.26, 3.6, 5.82); g.stroke();
+        }
+        // lágrimas escorrendo das duas bochechas
+        for (i = -1; i <= 1; i += 2) {
+          g.strokeStyle = 'rgba(143,216,255,0.55)'; g.lineWidth = r * 0.07;
+          g.beginPath(); g.moveTo(fx + i * ex, ey + r * 0.16); g.lineTo(fx + i * (ex + r * 0.14), ey + r * 0.95); g.stroke();
+          for (var k = 0; k < 3; k++) {
+            var pr = (animT * 0.9 + k / 3 + (i > 0 ? 0.17 : 0)) % 1;
+            dot(g, [fx + i * (ex + r * 0.14 * pr), ey + r * 0.18 + pr * r * 0.85], r * 0.075 * (1 - 0.35 * pr), 'rgba(143,216,255,' + (1 - pr * pr * pr) + ')');
+          }
+        }
+      } else if (excited) {
         g.fillStyle = INK; g.beginPath(); g.arc(fx, r * 0.3, r * 0.26, 0, 3.1416); g.closePath(); g.fill();
         g.fillStyle = '#FF7A8A'; g.beginPath(); g.arc(fx, r * 0.5, r * 0.12, 3.1416, 6.2832); g.fill();
       } else {
         g.beginPath(); g.arc(fx, r * 0.2, r * 0.3, 0.4, 2.74); g.stroke();
+      }
+      if (f.crown) {
+        var cy0 = -r * 0.88;
+        g.fillStyle = '#FFC83D'; g.strokeStyle = '#B5791A'; g.lineWidth = Math.max(1.5, r * 0.07); g.lineJoin = 'round';
+        g.beginPath(); g.moveTo(-r * 0.62, cy0); g.lineTo(-r * 0.66, cy0 - r * 0.5); g.lineTo(-r * 0.3, cy0 - r * 0.26); g.lineTo(0, cy0 - r * 0.68);
+        g.lineTo(r * 0.3, cy0 - r * 0.26); g.lineTo(r * 0.66, cy0 - r * 0.5); g.lineTo(r * 0.62, cy0); g.closePath(); g.fill(); g.stroke();
+        dot(g, [0, cy0 - r * 0.08], r * 0.07, '#E0523C'); dot(g, [-r * 0.36, cy0 - r * 0.06], r * 0.05, '#4D9DE0'); dot(g, [r * 0.36, cy0 - r * 0.06], r * 0.05, '#36C9A6');
+        var pulse = 0.6 + 0.4 * Math.sin(animT * 9);
+        g.fillStyle = 'rgba(255,255,255,0.9)';
+        for (i = -1; i <= 1; i += 2) {
+          var sx = i * r * 1.35, sy = -r * (0.7 + 0.2 * Math.sin(animT * 5 + i)), sz = r * 0.2 * pulse;
+          g.beginPath(); g.moveTo(sx, sy - sz); g.lineTo(sx + sz * 0.3, sy - sz * 0.3); g.lineTo(sx + sz, sy); g.lineTo(sx + sz * 0.3, sy + sz * 0.3);
+          g.lineTo(sx, sy + sz); g.lineTo(sx - sz * 0.3, sy + sz * 0.3); g.lineTo(sx - sz, sy); g.lineTo(sx - sz * 0.3, sy - sz * 0.3); g.closePath(); g.fill();
+        }
       }
       g.restore();
       return [cx, cy];
@@ -221,6 +286,7 @@ enum TVPage {
 
       // sombra no chão
       var feet = mid(la, ra);
+      if (f.floor !== undefined) { feet = [feet ? feet[0] : (nose ? nose[0] : ox + bw / 2), oy + f.floor * bh]; }
       if (feet) {
         g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath();
         if (g.ellipse) { g.ellipse(feet[0], feet[1] + u * 0.2, u * 1.1, u * 0.22, 0, 0, 6.2832); } else { g.arc(feet[0], feet[1] + u * 0.2, u * 0.6, 0, 6.2832); }
@@ -230,14 +296,11 @@ enum TVPage {
       // pernas e tênis
       chain(g, [lh, P('lk'), la], u * 0.52, pants, pantsEdge, ew, glow);
       chain(g, [rh, P('rk'), ra], u * 0.52, pants, pantsEdge, ew, glow);
-      var feetAt = [la, ra], i;
+      var hipMid = mid(lh, rh), i;
+      var legs = [[la, P('lk'), lh, ra], [ra, P('rk'), rh, la]];
       for (i = 0; i < 2; i++) {
-        var a = feetAt[i];
-        if (a) {
-          g.fillStyle = INK; g.beginPath(); g.arc(a[0], a[1], u * 0.34 + ew / 2, 3.1416, 6.2832); g.fill();
-          g.fillStyle = '#F4F4F8'; g.beginPath(); g.arc(a[0], a[1], u * 0.34, 3.1416, 6.2832); g.fill();
-          g.fillStyle = shirt; g.fillRect(a[0] - u * 0.34, a[1] - u * 0.02, u * 0.68, u * 0.1);
-        }
+        var anchor = legs[i][0], sideOf = (hipMid && anchor) ? (anchor[0] < hipMid[0] ? -1 : 1) : (i ? 1 : -1);
+        foot(g, anchor, legs[i][1], legs[i][2], legs[i][3], sideOf, u, shirt, ew);
       }
 
       // tronco: camisa com degradê e contorno, cantos arredondados, cinto
@@ -285,7 +348,7 @@ enum TVPage {
         var r = u * 0.74;
         var c = drawHead(g, f, { nose: nose, eyeL: eyes[0], eyeR: eyes[1], earL: ears[0], earR: ears[1] }, r, hair, ew, raised);
         g.font = 'bold ' + Math.round(bh * 0.06) + 'px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        var label = f.name + (f.ready ? ' ✓' : ' !'), tw = g.measureText(label).width, ph = bh * 0.085;
+        var label = f.name + (f.mood === 'win' ? ' ★' : (f.mood === 'sad' ? '' : (f.ready ? ' ✓' : ' !'))), tw = g.measureText(label).width, ph = bh * 0.085;
         var py = Math.max(oy + ph * 0.1, c[1] - r * 1.15 - ph * 1.25);
         pill(g, c[0] - tw / 2 - ph * 0.45, py, tw + ph * 0.9, ph, 'rgba(0,0,0,0.55)');
         g.fillStyle = f.color; g.fillText(label, c[0], py + ph / 2 + 1);
@@ -309,7 +372,8 @@ enum TVPage {
       if (r) { r(f); } else { setTimeout(f, 16); }
     }
     function glide(){
-      var targets = lastPose.figures || [], moving = false, k = 0.6, next = [];
+      var targets = ending ? endingFigures() : (lastPose.figures || []), moving = !!ending, k = 0.6, next = [];
+      animT = Date.now() / 1000;
       for (var i = 0; i < targets.length; i++) {
         var t = targets[i], cur = null;
         for (var j = 0; j < shown.length; j++) { if (shown[j].name === t.name && shown[j].color === t.color) { cur = shown[j]; break; } }
@@ -321,7 +385,7 @@ enum TVPage {
           if (Math.abs(to[0] - x) > 0.0006 || Math.abs(to[1] - y) > 0.0006) { moving = true; } else { x = to[0]; y = to[1]; }
           joints[key] = [x, y];
         }
-        next.push({ name: t.name, color: t.color, ready: t.ready, joints: joints });
+        next.push({ name: t.name, color: t.color, ready: t.ready, joints: joints, mood: t.mood, crown: t.crown, floor: t.floor, sob: t.sob });
       }
       shown = next;
       drawStage();
@@ -413,7 +477,7 @@ enum TVPage {
       el('note').style.display = (s.screen === 'result' && s.note && video) ? 'block' : 'none';
       el('note').textContent = s.note || '';
       el('tia').style.display = playing ? 'block' : 'none';
-      stage.style.display = ((positioning || playing) && !video) ? 'block' : 'none';
+      stage.style.display = ((positioning || playing || (s.screen === 'gameover' && s.winners)) && !video) ? 'block' : 'none';
       stage.style.top = positioning ? '17vh' : '60vh';
       stage.style.height = positioning ? '66vh' : '33vh';
       var showCam = positioning && camCode;
@@ -428,11 +492,104 @@ enum TVPage {
       }
       el('players').innerHTML = html;
       renderScore(s.score);
+      updateEnding(s);
       drawStage();
     }
     function pose(p){
       lastPose = p;
+      for (var q = 0; q < (p.figures || []).length; q++) {
+        var fj = p.figures[q].joints, base = (fj.la && fj.ra) ? Math.max(fj.la[1], fj.ra[1]) : 0;
+        if (fj.n && base) { tallest[p.figures[q].name] = Math.max(tallest[p.figures[q].name] || 0, base - fj.n[1]); }
+      }
       if (!gliding) { gliding = true; nextFrame(glide); }
+    }
+
+    // ---------- resultado: dancinha da vitória e choro de quem perdeu (poses desenhadas por código, em ciclo)
+    var ending = null, confetti = [], tallest = {}, animT = 0;
+    var DANCE = [
+      { L: [2.6, 2.9], R: [2.6, 2.9] },   // braços em V
+      { L: [2.9, 3.1], R: [0.9, 0.7] },   // dedo para o alto (disco)
+      { L: [1.2, 2.9], R: [1.2, 2.9] },   // punhos fechados
+      { L: [0.9, 0.7], R: [2.9, 3.1] }
+    ];
+    function smooth(x){ x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+    function lerp(a, b, t){ return a + (b - a) * t; }
+    // Monta o esqueleto (mesmos nomes das juntas do Vision) em "unidades de altura", ancorado nos pés do jogador.
+    function figureJoints(b, aspect, spec){
+      var J = {};
+      function put(name, dx, dy){ J[name] = [b.cx + dx * b.k / aspect, b.floor + dy * b.k]; }
+      function arm(side, sh, aU, aF, pre){
+        var ex = sh[0] + side * Math.sin(aU) * 0.11, ey = sh[1] + Math.cos(aU) * 0.11;
+        put('le'.replace('l', pre), ex, ey);
+        put('lw'.replace('l', pre), ex + side * Math.sin(aF) * 0.11, ey + Math.cos(aF) * 0.11);
+      }
+      var sh = spec.shoulderY, hw = spec.shoulderW;
+      put('n', spec.headX, spec.headY);
+      put('ley', spec.headX - 0.027, spec.headY - 0.015 - spec.tilt); put('rey', spec.headX + 0.027, spec.headY - 0.015 + spec.tilt);
+      put('lea', spec.headX - 0.057, spec.headY - 0.008 - spec.tilt); put('rea', spec.headX + 0.057, spec.headY - 0.008 + spec.tilt);
+      put('ls', spec.shX - hw, sh); put('rs', spec.shX + hw, sh);
+      arm(-1, [spec.shX - hw, sh], spec.armL[0], spec.armL[1], 'l'); arm(1, [spec.shX + hw, sh], spec.armR[0], spec.armR[1], 'r');
+      put('lh', spec.hipX - 0.036, spec.hipY); put('rh', spec.hipX + 0.036, spec.hipY);
+      put('lk', spec.hipX - spec.kneeW, spec.kneeY); put('rk', spec.hipX + spec.kneeW, spec.kneeY);
+      put('la', -spec.footW, spec.footY); put('ra', spec.footW, spec.footY);
+      return J;
+    }
+    function danceSpec(t){
+      var beat = t / 0.55, bi = Math.floor(beat), ph = beat - bi, e = smooth(ph);
+      var from = DANCE[bi % 4], to = DANCE[(bi + 1) % 4];
+      var hop = Math.max(0, Math.sin(Math.PI * ph)), squat = (1 - hop) * 0.014, lift = hop * 0.04;
+      var sway = Math.sin(beat * Math.PI) * 0.022, y = squat - lift;
+      return { headX: sway * 0.25, headY: -0.68 + y, tilt: sway * 0.5, shoulderY: -0.58 + y, shoulderW: 0.071, shX: -sway * 0.3,
+               hipX: sway * 0.5, hipY: -0.32 + squat * 0.5 - lift, kneeW: 0.036 + (1 - hop) * 0.02, kneeY: -0.16 - lift * 0.5 + squat * 0.5,
+               footW: 0.036 + (1 - hop) * 0.012, footY: -lift * 0.9,
+               armL: [lerp(from.L[0], to.L[0], e), lerp(from.L[1], to.L[1], e)], armR: [lerp(from.R[0], to.R[0], e), lerp(from.R[1], to.R[1], e)] };
+    }
+    function sadSpec(t){
+      var sob = Math.max(0, Math.sin(6.2832 * t / 1.3)), sob2 = sob * sob, shake = Math.sin(6.2832 * 9 * t) * 0.004 * sob2;
+      var slump = 0.03, drop = 0.05, sway = Math.sin(6.2832 * t / 2.6);
+      function wipe(offset){ var p = (((t + offset) % 2.6) + 2.6) % 2.6 / 1.1; return p < 1 ? Math.sin(Math.PI * p) : 0; }
+      var wl = wipe(0), wr = wipe(1.3);
+      return { sob: sob2, headX: sway * 0.006, headY: -0.68 + slump + drop + sob2 * 0.008, tilt: sway * 0.012,
+               shoulderY: -0.58 + slump + shake, shoulderW: 0.06, shX: 0, hipX: 0, hipY: -0.31, kneeW: 0.028, kneeY: -0.155,
+               footW: 0.045, footY: 0,
+               armL: [lerp(0.12, 0.5, wl), lerp(0.05, -2.55, wl) + Math.sin(t * 18) * 0.1 * wl],
+               armR: [lerp(0.12, 0.5, wr), lerp(0.05, -2.55, wr) + Math.sin(t * 18) * 0.1 * wr] };
+    }
+    function baseOf(f){
+      var j = f.joints, floor = (j.la && j.ra) ? Math.max(j.la[1], j.ra[1]) : (j.la ? j.la[1] : (j.ra ? j.ra[1] : 0.9));
+      var hm = mid(j.lh, j.rh) || mid(j.ls, j.rs) || j.n || [0.5, 0.5], h = tallest[f.name] || 0.68;
+      return { cx: hm[0], floor: floor, k: clamp(h, 0.4, 0.9) / 0.68 };
+    }
+    function endingFigures(){
+      var live = lastPose.figures || [], out = [], t = (Date.now() - ending.t0) / 1000, aspect = lastPose.aspect || 1.7778;
+      for (var i = 0; i < live.length; i++) {
+        var f = live[i], b = ending.base[f.name] || (ending.base[f.name] = baseOf(f)), win = !!ending.win[f.name];
+        var spec = win ? danceSpec(t + i * 0.1) : sadSpec(t + i * 0.25);
+        out.push({ name: f.name, color: f.color, ready: true, joints: figureJoints(b, aspect, spec), mood: win ? 'win' : 'sad',
+                   crown: win, floor: b.floor, sob: spec.sob || 0 });
+      }
+      return out;
+    }
+    function updateEnding(s){
+      var on = (s.screen === 'gameover' && s.winners && s.winners.length > 0), i;
+      if (on && !ending) {
+        ending = { t0: Date.now(), win: {}, base: {} }; confetti = [];
+        if (!gliding) { gliding = true; nextFrame(glide); }
+        fxStart();
+      } else if (!on && ending) { ending = null; confetti = []; }
+      if (ending) { ending.win = {}; for (i = 0; i < s.winners.length; i++) { ending.win[s.winners[i]] = 1; } }
+      el('fx').style.display = (ending || board.round !== null) ? 'block' : 'none';
+    }
+    function drawConfetti(g, W, H, dt){
+      var colors = ['#FFC845', '#36C9A6', '#FF7AB8', '#4D9DE0', '#FF9F1C', '#8E7BFF'], keep = [], i;
+      if (ending) { for (i = 0; i < 3 && confetti.length < 70; i++) { confetti.push({ x: Math.random() * W, y: -10, vy: H * (0.16 + Math.random() * 0.2), vx: (Math.random() - 0.5) * W * 0.06, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 8, w: H * 0.014, h: H * 0.026, c: colors[Math.floor(Math.random() * colors.length)] }); } }
+      for (i = 0; i < confetti.length; i++) {
+        var p = confetti[i]; p.y += p.vy * dt; p.x += p.vx * dt + Math.sin(p.y * 0.01 + p.rot) * 0.6; p.rot += p.vr * dt;
+        if (p.y > H + 20) continue;
+        g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore();
+        keep.push(p);
+      }
+      confetti = keep;
     }
 
     // ---------- modo pontuação: moedas que saltam do avatar até o placar, selos de rapidez e combo
@@ -499,7 +656,7 @@ enum TVPage {
       d.style.fontSize = size + 'vh'; d.style.color = t.color;
       var sub = '';
       if (e.tier !== 'miss') {
-        sub = (e.ms !== null && e.ms !== undefined ? secondsText(e.ms) + ' · ' : '') + '+' + e.gain + (e.multiplier > 1 ? ' · x' + e.multiplier : '');
+        sub = (e.double ? 'DUPLO · ' : '') + (e.ms !== null && e.ms !== undefined ? secondsText(e.ms) + ' · ' : '') + '+' + e.gain + (e.multiplier > 1 ? ' · x' + e.multiplier : '');
       }
       d.innerHTML = t.text + (sub ? '<div class="sub">' + sub + '</div>' : '');
       document.body.appendChild(d);
@@ -593,13 +750,14 @@ enum TVPage {
         keep.push(s);
       }
       g.globalAlpha = 1; sparks = keep;
-      if (parts.length || sparks.length) { nextFrame(fxFrame); } else { fxRunning = false; g.clearRect(0, 0, W, H); }
+      drawConfetti(g, W, H, dt);
+      if (parts.length || sparks.length || confetti.length || ending) { nextFrame(fxFrame); } else { fxRunning = false; g.clearRect(0, 0, W, H); }
     }
     function fxStart(){ if (!fxRunning) { fxRunning = true; fxLast = Date.now(); nextFrame(fxFrame); } }
     function renderScore(sc){
       var on = !!(sc && sc.entries && sc.entries.length), i;
       el('board').style.display = on ? 'block' : 'none';
-      el('fx').style.display = on ? 'block' : 'none';
+      el('fx').style.display = (on || ending) ? 'block' : 'none';
       el('players').style.display = on ? 'none' : 'block';
       if (!on) { board.round = null; board.built = ''; parts = []; sparks = []; board.pending = {}; return; }
       buildBoard(sc.entries);

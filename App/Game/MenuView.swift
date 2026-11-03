@@ -41,6 +41,9 @@ struct MenuView: View {
                                 }
                             }
                         }
+                        Toggle("Comandos duplos (\"Vivo! Morto!\") quando o ritmo sobe", isOn: $loop.settings.doubles)
+                            .font(.headline)
+                            .foregroundStyle(Color.aganhaCream)
                         Toggle("Perguntar o nome de cada jogador", isOn: $loop.settings.askNames)
                             .font(.headline)
                             .foregroundStyle(Color.aganhaCream)
