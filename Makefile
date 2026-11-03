@@ -7,9 +7,9 @@ SWIFTLINT := $(shell command -v swiftlint 2>/dev/null || echo $(TOOLS)/swiftlint
 
 PROJECT   := Agacha.xcodeproj
 SCHEME    := Agacha
-PACKAGES  := AganhaCore AganhaVision AganhaAudio AganhaUI AganhaStore
+PACKAGES  := AganhaCore AganhaVision AganhaAudio AganhaUI AganhaStore AganhaTV
 # Pacotes com testes que rodam no macOS via `swift test`
-TESTED    := AganhaCore AganhaVision
+TESTED    := AganhaCore AganhaVision AganhaTV
 
 .PHONY: project build test lint clean audio audio-missing
 

@@ -55,6 +55,7 @@ final class GameLoop {
     let camera = CameraSession()
     let pipeline = PosePipeline()
     let recorder = ClipRecorder()
+    let tv = TVBridge()
     let audio = AudioPlayer()
     let listener = NameListener()
     var replay = ReplayBuffer()

@@ -19,3 +19,10 @@
 - Os arquivos ficam na pasta temporária do app (protegida), sem som, **nunca são enviados**, e são **apagados** quando o replay termina, ao sair da partida, ao fim do jogo e na próxima abertura do app.
 - A gravação é desligada fora da partida (nunca grava no menu nem no posicionamento).
 - A imagem continua sem sair do aparelho. Isso muda a regra anterior ("nenhuma imagem em disco"): agora há vídeo temporário, que precisa constar na política de privacidade.
+
+## Mostrar na TV pelo navegador (rede local)
+
+- Com "Mostrar na TV pelo navegador" ligado, o app abre um servidor **só na rede Wi-Fi da casa**. A TV (ou outro navegador) abre o endereço mostrado e recebe o estado do jogo: palavra, cores, nomes dos jogadores, vidas e resultados. Os sons do jogo também podem tocar na TV.
+- **Nunca envia imagem da câmera, vídeo ou áudio do microfone.** Nada sai da rede local; o servidor para ao desligar a opção ou fechar o app.
+- Na versão de teste não há código de acesso: qualquer aparelho da mesma rede que souber o endereço pode ver o estado do jogo (inclusive nomes). Antes da App Store, adicionar um código na URL.
+- O iOS pede a permissão de "Rede Local" na primeira vez (`NSLocalNetworkUsageDescription`).

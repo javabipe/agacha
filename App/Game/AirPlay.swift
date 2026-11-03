@@ -45,6 +45,7 @@ final class MirroringMonitor {
 /// Como ver o jogo na TV. O espelhamento da tela inteira é do sistema (Centro de Controle); um app não consegue ligá-lo.
 struct TVHelpView: View {
     let monitor: MirroringMonitor
+    let tv: TVBridge
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -56,7 +57,19 @@ struct TVHelpView: View {
                         .font(.headline)
                         .foregroundStyle(monitor.isMirroring ? Color.green : Color.primary)
                 }
-                Section("Espelhar a tela do iPad (recomendado)") {
+                Section {
+                    Text("1. No menu do Agacha, ligue \"Mostrar na TV pelo navegador\".")
+                    Text("2. Na TV, abra o navegador (nas Samsung, o app \"Internet\") e digite o endereço que aparece no menu.")
+                    Text("3. Aperte OK no controle da TV para ligar o som. Pronto: a TV mostra o jogo e toca a voz da tia.")
+                    if let address = tv.address {
+                        Text(address).font(.system(.title3, design: .monospaced).weight(.bold)).textSelection(.enabled)
+                    }
+                } header: {
+                    Text("Pelo navegador da TV (recomendado)")
+                } footer: {
+                    Text("O iPad e a TV precisam estar no mesmo Wi-Fi. Só o estado do jogo vai para a TV, nunca a imagem da câmera.")
+                }
+                Section("Espelhar a tela do iPad") {
                     Text("1. Ligue a TV e confirme que o AirPlay está ativo nela "
                          + "(em muitas Samsung: Configurações › Geral › Configurações do Apple AirPlay).")
                     Text("2. No iPad, deslize para baixo a partir do canto superior direito para abrir o Centro de Controle.")

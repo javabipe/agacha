@@ -54,6 +54,8 @@ struct MenuView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(Color(hex: "#36C9A6"))
 
+                    tvControls
+
                     Button(mirroring.isMirroring ? "Ver na TV (conectada)" : "Ver na TV", systemImage: "tv") { showTV = true }
                         .foregroundStyle(Color.aganhaCream.opacity(mirroring.isMirroring ? 1 : 0.9))
 
@@ -65,7 +67,37 @@ struct MenuView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .sheet(isPresented: $showTV) { TVHelpView(monitor: mirroring) }
+        .sheet(isPresented: $showTV) { TVHelpView(monitor: mirroring, tv: loop.tv) }
+    }
+
+    /// Mostrar o jogo no navegador da TV (rede Wi-Fi), com ou sem o som.
+    private var tvControls: some View {
+        VStack(spacing: 8) {
+            Toggle("Mostrar na TV pelo navegador", isOn: Binding(get: { loop.tv.isOn }, set: { loop.setTVEnabled($0) }))
+                .font(.headline)
+                .foregroundStyle(Color.aganhaCream)
+            if loop.tv.isOn, let address = loop.tv.address {
+                Text("Na TV, abra o navegador e digite:")
+                    .font(.callout)
+                    .foregroundStyle(Color.aganhaCream.opacity(0.85))
+                Text(address)
+                    .font(.system(size: 30, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(Color.aganhaYellow)
+                    .textSelection(.enabled)
+                Text(loop.tv.connectedScreens == 0 ? "Nenhuma TV conectada ainda"
+                     : "\(loop.tv.connectedScreens) tela(s) conectada(s)")
+                    .font(.callout)
+                    .foregroundStyle(loop.tv.connectedScreens == 0 ? Color.aganhaCream.opacity(0.7) : Color.green)
+                Toggle("Som na TV", isOn: Binding(get: { loop.tv.soundOnTV }, set: { loop.tv.soundOnTV = $0 }))
+                    .font(.headline)
+                    .foregroundStyle(Color.aganhaCream)
+            }
+            if let error = loop.tv.errorMessage {
+                Text(error).font(.callout).foregroundStyle(.orange)
+            }
+        }
+        .padding(16)
+        .background(.black.opacity(0.3), in: .rect(cornerRadius: 20))
     }
 
     private func picker<Value: Hashable>(_ title: LocalizedStringKey, selection: Binding<Value>, options: [Value],

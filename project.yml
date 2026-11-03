@@ -24,6 +24,8 @@ packages:
     path: Packages/AganhaUI
   AganhaStore:
     path: Packages/AganhaStore
+  AganhaTV:
+    path: Packages/AganhaTV
 targets:
   Agacha:
     type: application
@@ -36,6 +38,7 @@ targets:
       - package: AganhaAudio
       - package: AganhaUI
       - package: AganhaStore
+      - package: AganhaTV
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: br.com.agacha.agacha
@@ -48,6 +51,7 @@ targets:
       properties:
         CFBundleDisplayName: Agacha
         CFBundleLocalizations: [pt-BR, en]
+        NSLocalNetworkUsageDescription: O Agacha mostra o jogo na TV pelo navegador dela, dentro da sua rede Wi-Fi. Nada vai para a internet.
         NSMicrophoneUsageDescription: O microfone ouve o nome de cada jogador para a tia poder chamar cada um pelo nome. O som só é usado para entender o nome e não é gravado pelo app.
         NSSpeechRecognitionUsageDescription: O reconhecimento de fala entende o nome dito pelo jogador. Quando possível é feito no próprio aparelho; senão, o som pode ser enviado à Apple apenas para reconhecer a fala. Nada é gravado pelo app.
         NSCameraUsageDescription: A câmera identifica quem está de pé ou agachado. As imagens são processadas no aparelho e nunca são enviadas. No replay de um erro, alguns segundos de vídeo ficam guardados temporariamente e são apagados em seguida.
