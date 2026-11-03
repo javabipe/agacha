@@ -1,5 +1,6 @@
-// swiftlint:disable line_length
+// swiftlint:disable line_length type_body_length
 /// Página que a TV abre. Escrita em JavaScript simples (ES5) para funcionar em navegadores de TV mais antigos.
+/// Para ver a página renderizada: `scripts/render_tv_page.swift`.
 enum TVPage {
     static let html = #"""
     <!DOCTYPE html>
@@ -11,46 +12,96 @@ enum TVPage {
     <style>
     html,body{margin:0;height:100%;overflow:hidden;background:#1B1433;color:#fff;font-family:Arial,Helvetica,sans-serif}
     #bg{position:absolute;left:0;top:0;right:0;bottom:0;background:#1B1433}
-    #center{position:absolute;left:0;right:0;top:0;bottom:44vh;display:flex;align-items:center;justify-content:center}
-    #tia{width:30vh;height:30vh;margin-right:4vw;display:none}
-    #word{font-size:22vh;font-weight:900;text-align:center;text-shadow:0 .6vh 1.2vh rgba(0,0,0,.4)}
-    #banner{font-size:9vh;font-weight:800;text-align:center;padding:0 4vw;line-height:1.1}
-    #message{position:absolute;left:0;right:0;top:3vh;text-align:center;font-size:7vh;font-weight:800;color:#FFC845}
+    #replay{position:absolute;left:0;top:0;width:100%;height:100%;background:#000;display:none}
+    #top{position:absolute;left:0;right:0;top:0;height:17vh;text-align:center}
+    #word{display:inline-block;margin-top:1.5vh;font-size:13vh;font-weight:900;line-height:1;text-shadow:0 .5vh 1vh rgba(0,0,0,.4)}
+    #tiaMini{position:absolute;left:3vw;top:1vh;width:15vh;height:15vh}
+    #message{position:absolute;left:0;right:0;top:2.5vh;text-align:center;font-size:7vh;font-weight:800;color:#FFC845;text-shadow:0 .4vh 1vh rgba(0,0,0,.6)}
+    #message.pill{left:2vw;right:auto;text-align:left;padding:1.2vh 2.4vw;border-radius:5vh;background:rgba(0,0,0,.6)}
     #cam{position:absolute;display:none;background:#000}
-    #stage{position:absolute;left:0;top:60vh;width:100%;height:33vh;display:none}
+    #stage{position:absolute;left:0;top:17vh;width:100%;height:74vh;display:none}
+    #card{position:absolute;right:2vw;top:2vh;width:24vh;padding:1.4vh;border-radius:2vh;border:.5vh solid #fff;text-align:center;display:none;box-shadow:0 1vh 3vh rgba(0,0,0,.6)}
+    #cardWord{font-size:5.4vh;font-weight:900}
+    #tiaCard{width:16vh;height:16vh;margin:0 auto}
+    #cardTag{font-size:3vh;font-weight:700;min-height:3.4vh}
+    #note{position:absolute;left:2vw;bottom:9vh;font-size:3vh;color:rgba(255,255,255,.85);background:rgba(0,0,0,.5);padding:.6vh 1.4vw;border-radius:1vh;display:none}
     #players{position:absolute;left:0;right:0;bottom:1vh;text-align:center}
-    .chip{display:inline-block;margin:.4vh .8vw;padding:.8vh 1.6vw;border-radius:6vh;background:rgba(0,0,0,.4);font-size:3.6vh}
+    .chip{display:inline-block;margin:.4vh .8vw;padding:.8vh 1.6vw;border-radius:6vh;background:rgba(0,0,0,.45);font-size:3.8vh}
     .chip.out{opacity:.4}
     .dot{display:inline-block;width:3vh;height:3vh;border-radius:50%;margin-right:.8vw;vertical-align:middle}
-    #status{position:absolute;right:2vw;top:2vh;font-size:2.6vh;opacity:.8}
+    #status{position:absolute;right:2vw;bottom:9vh;font-size:2.6vh;opacity:.8}
     #sound{position:absolute;left:0;right:0;bottom:0;padding:2vh;text-align:center;font-size:3.4vh;background:#FFC845;color:#1B1433;font-weight:700}
+
+    /* ---- efeito relâmpago */
+    #hero{position:absolute;left:0;top:0;right:0;bottom:0;display:none;pointer-events:none}
+    #heroWord{position:absolute;left:0;right:0;top:50%;margin-top:-20vh;text-align:center;font-size:34vh;font-weight:900;line-height:1;color:#fff;
+      text-shadow:0 0 3vh #fff,0 0 9vh #FFF176,0 1.2vh 2.4vh rgba(0,0,0,.55)}
+    #heroWord.small{font-size:22vh;margin-top:-13vh}
+    .bolt{position:absolute;top:3vh;height:94vh;opacity:0;-webkit-filter:drop-shadow(0 0 3vh #FFF176);filter:drop-shadow(0 0 3vh #FFF176)}
+    #boltL{left:4vw}
+    #boltR{right:4vw}
+    #flash{position:absolute;left:0;top:0;right:0;bottom:0;background:#fff;opacity:0;pointer-events:none}
+    @-webkit-keyframes flashA{0%{opacity:.95}100%{opacity:0}}
+    @keyframes flashA{0%{opacity:.95}100%{opacity:0}}
+    @-webkit-keyframes slamA{0%{-webkit-transform:scale(2.8);opacity:0}16%{-webkit-transform:scale(1);opacity:1}70%{-webkit-transform:scale(1.07);opacity:1}100%{-webkit-transform:scale(.55);opacity:0}}
+    @keyframes slamA{0%{transform:scale(2.8);opacity:0}16%{transform:scale(1);opacity:1}70%{transform:scale(1.07);opacity:1}100%{transform:scale(.55);opacity:0}}
+    @-webkit-keyframes boltA{0%{opacity:0;-webkit-transform:scale(.6)}14%{opacity:1;-webkit-transform:scale(1.08)}100%{opacity:0;-webkit-transform:scale(1.25)}}
+    @keyframes boltA{0%{opacity:0;transform:scale(.6)}14%{opacity:1;transform:scale(1.08)}100%{opacity:0;transform:scale(1.25)}}
+    @-webkit-keyframes boltRA{0%{opacity:0;-webkit-transform:scaleX(-.6) scaleY(.6)}14%{opacity:1;-webkit-transform:scaleX(-1.08) scaleY(1.08)}100%{opacity:0;-webkit-transform:scaleX(-1.25) scaleY(1.25)}}
+    @keyframes boltRA{0%{opacity:0;transform:scaleX(-.6) scaleY(.6)}14%{opacity:1;transform:scaleX(-1.08) scaleY(1.08)}100%{opacity:0;transform:scaleX(-1.25) scaleY(1.25)}}
+    @-webkit-keyframes popA{0%{-webkit-transform:scale(.3);opacity:0}35%{-webkit-transform:scale(1.25);opacity:1}100%{-webkit-transform:scale(1);opacity:1}}
+    @keyframes popA{0%{transform:scale(.3);opacity:0}35%{transform:scale(1.25);opacity:1}100%{transform:scale(1);opacity:1}}
+    .flashing{-webkit-animation:flashA .55s ease-out;animation:flashA .55s ease-out}
+    .slam{-webkit-animation:slamA 1s ease-out forwards;animation:slamA 1s ease-out forwards}
+    .popin{-webkit-animation:popA .8s ease-out forwards;animation:popA .8s ease-out forwards}
+    #boltL.go{-webkit-animation:boltA .8s ease-out forwards;animation:boltA .8s ease-out forwards}
+    #boltR.go{-webkit-animation:boltRA .8s ease-out forwards;animation:boltRA .8s ease-out forwards}
+    #word.arrive{-webkit-animation:popA .4s .7s ease-out both;animation:popA .4s .7s ease-out both}
     </style>
     </head>
     <body>
     <div id="bg"></div>
+    <video id="replay" muted loop autoplay playsinline></video>
+    <div id="top"><div id="tiaMini"></div><div id="word"></div></div>
     <div id="message"></div>
     <img id="cam" alt="">
     <canvas id="stage"></canvas>
-    <div id="center">
-      <svg id="tia" viewBox="0 0 200 200">
-        <line id="armL" x1="70" y1="100" x2="70" y2="165" stroke="#FFD9B8" stroke-width="16" stroke-linecap="round"/>
-        <line id="armR" x1="130" y1="100" x2="130" y2="165" stroke="#FFD9B8" stroke-width="16" stroke-linecap="round"/>
-        <rect x="55" y="82" width="90" height="100" rx="26" fill="#8E7BFF"/>
-        <circle cx="100" cy="52" r="34" fill="#FFD9B8"/>
-        <circle cx="88" cy="48" r="4" fill="#000"/><circle cx="112" cy="48" r="4" fill="#000"/>
-        <path d="M86 64 Q100 76 114 64" stroke="#000" stroke-width="4" fill="none" stroke-linecap="round"/>
-      </svg>
-      <div><div id="word"></div><div id="banner"></div></div>
-    </div>
+    <div id="card"><div id="cardWord"></div><div id="tiaCard"></div><div id="cardTag"></div></div>
+    <div id="note"></div>
     <div id="players"></div>
+    <div id="flash"></div>
+    <div id="hero">
+      <svg id="boltL" class="bolt" viewBox="0 0 100 200"><polygon points="62,0 14,108 46,108 28,200 86,76 52,76 74,0" fill="#FFF176" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg>
+      <svg id="boltR" class="bolt" viewBox="0 0 100 200"><polygon points="62,0 14,108 46,108 28,200 86,76 52,76 74,0" fill="#FFF176" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg>
+      <div id="heroWord"></div>
+    </div>
     <div id="status">Conectando…</div>
     <div id="sound">Aperte OK (ou qualquer tecla) no controle para ligar o som</div>
     <script>
     var unlocked = false, ctx = null, buffers = {}, pending = {}, active = [], epoch = 0;
     var fallback = null, total = 0, loaded = 0;
     var lastState = { screen: 'menu', players: [] }, lastPose = { figures: [] };
+    var lastCommand = null, lastBanner = null;
     var camCode = (location.search.match(/[?&]t=([0-9]+)/) || [])[1];
     function el(id){ return document.getElementById(id); }
+
+    // ---------- tia (a mesma em dois tamanhos)
+    function tiaSvg(p){
+      return '<svg viewBox="0 0 200 200" style="width:100%;height:100%">'
+        + '<line id="' + p + 'L" x1="70" y1="100" x2="70" y2="165" stroke="#FFD9B8" stroke-width="16" stroke-linecap="round"/>'
+        + '<line id="' + p + 'R" x1="130" y1="100" x2="130" y2="165" stroke="#FFD9B8" stroke-width="16" stroke-linecap="round"/>'
+        + '<rect x="55" y="82" width="90" height="100" rx="26" fill="#8E7BFF"/>'
+        + '<circle cx="100" cy="52" r="34" fill="#FFD9B8"/>'
+        + '<circle cx="88" cy="48" r="4" fill="#000"/><circle cx="112" cy="48" r="4" fill="#000"/>'
+        + '<path d="M86 64 Q100 76 114 64" stroke="#000" stroke-width="4" fill="none" stroke-linecap="round"/></svg>';
+    }
+    function setArms(g){
+      var up = (g === 'up'), l = up ? 150 : 18, r = up ? -150 : -18, ids = ['m', 'c'];
+      for (var i = 0; i < ids.length; i++) {
+        el(ids[i] + 'L').setAttribute('transform', 'rotate(' + l + ' 70 100)');
+        el(ids[i] + 'R').setAttribute('transform', 'rotate(' + r + ' 130 100)');
+      }
+    }
 
     // ---------- avatares (desenhados a partir das juntas do corpo, nunca da imagem)
     function shade(hex, f){
@@ -88,8 +139,10 @@ enum TVPage {
         dot(g, [nose[0] + r * 0.36, nose[1] - r * 0.02], r * 0.11, '#000');
         g.strokeStyle = '#000'; g.lineWidth = Math.max(2, r * 0.1); g.lineCap = 'round';
         g.beginPath(); g.arc(nose[0], nose[1] + r * 0.12, r * 0.38, 0.35, 2.79); g.stroke();
-        g.fillStyle = f.color; g.textAlign = 'center'; g.font = 'bold ' + Math.round(bh * 0.06) + 'px Arial';
-        g.fillText(f.name + (f.ready ? ' ✓' : ' !'), nose[0], Math.max(oy + bh * 0.07, nose[1] - r * 1.5));
+        g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 5; g.textAlign = 'center';
+        g.font = 'bold ' + Math.round(bh * 0.07) + 'px Arial';
+        var label = f.name + (f.ready ? ' ✓' : ' !'), ly = Math.max(oy + bh * 0.08, nose[1] - r * 1.5);
+        g.strokeText(label, nose[0], ly); g.fillText(label, nose[0], ly);
       }
       g.globalAlpha = 1;
     }
@@ -109,38 +162,81 @@ enum TVPage {
         cam.style.left = (c.offsetLeft + b.ox) + 'px'; cam.style.top = (c.offsetTop + b.oy) + 'px';
         cam.style.width = b.bw + 'px'; cam.style.height = b.bh + 'px';
       } else {
-        g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(b.ox, b.oy, b.bw, b.bh);
+        g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(b.ox, b.oy, b.bw, b.bh);
       }
       g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.strokeRect(b.ox, b.oy, b.bw, b.bh);
       var figs = lastPose.figures || [];
       for (var i = 0; i < figs.length; i++) { drawAvatar(g, figs[i], b.ox, b.oy, b.bw, b.bh); }
     }
 
+    // ---------- efeito relâmpago (comando) e destaque (contagem e avisos)
+    function restart(node, cls){
+      // getAttribute/setAttribute funcionam também em elementos SVG (onde className não é um texto).
+      var kept = (node.getAttribute('class') || '').replace(cls, '').replace(/^\s+|\s+$/g, '');
+      node.setAttribute('class', kept);
+      void node.getBoundingClientRect();
+      node.setAttribute('class', kept ? kept + ' ' + cls : cls);
+    }
+    function lightning(text){
+      var hero = el('hero');
+      hero.style.display = 'block';
+      el('heroWord').textContent = text;
+      el('heroWord').className = '';
+      restart(el('heroWord'), 'slam'); restart(el('boltL'), 'go'); restart(el('boltR'), 'go'); restart(el('flash'), 'flashing');
+      restart(el('word'), 'arrive');
+      setTimeout(function(){ hero.style.display = 'none'; }, 1050);
+    }
+    function announce(text){
+      var hero = el('hero');
+      hero.style.display = 'block';
+      el('heroWord').textContent = text;
+      el('heroWord').className = (text.length > 3 ? 'small' : '');
+      restart(el('heroWord'), 'popin');
+      if (text.length > 3) { restart(el('boltL'), 'go'); restart(el('boltR'), 'go'); }
+      setTimeout(function(){ hero.style.display = 'none'; }, 900);
+    }
+
     // ---------- tela
-    function setArms(g){
-      var up = (g === 'up'), l = up ? 150 : 18, r = up ? -150 : -18;
-      el('armL').setAttribute('transform', 'rotate(' + l + ' 70 100)');
-      el('armR').setAttribute('transform', 'rotate(' + r + ' 130 100)');
+    function showReplay(s){
+      var v = el('replay'), src = (s.screen === 'result' && s.replay && camCode) ? (s.replay + '&t=' + camCode) : null;
+      if (src) {
+        if (v.getAttribute('data-src') !== src) {
+          v.setAttribute('data-src', src); v.src = src; v.load();
+          var p = v.play(); if (p && p.catch) p.catch(function(){});
+        }
+        v.style.display = 'block';
+      } else {
+        if (v.getAttribute('data-src')) { v.pause(); v.removeAttribute('src'); v.removeAttribute('data-src'); v.load(); }
+        v.style.display = 'none';
+      }
+      return !!src;
     }
     function render(s){
       lastState = s;
       var positioning = (s.screen === 'positioning');
-      var playing = (s.screen === 'play' || s.screen === 'result');
-      var play = (s.screen === 'play' && s.word);
-      var stage = el('stage'), cam = el('cam');
+      var playing = (s.screen === 'play');
+      var result = (s.screen === 'result');
+      var video = showReplay(s);
+      var stage = el('stage'), cam = el('cam'), card = el('card');
       el('bg').style.background = (s.word && s.background) ? s.background : 'linear-gradient(#1B1433,#3A2A6B)';
-      el('word').textContent = s.word || '';
-      el('banner').textContent = positioning ? '' : (s.banner || (s.screen === 'menu' ? 'Agacha!' : ''));
-      el('message').textContent = positioning ? (s.banner || '') : (s.message || '');
-      el('center').style.display = positioning ? 'none' : 'flex';
-      el('tia').style.display = playing ? 'block' : 'none';
-      stage.style.display = (positioning || playing) ? 'block' : 'none';
-      stage.style.top = positioning ? '17vh' : '60vh';
-      stage.style.height = positioning ? '66vh' : '33vh';
+      el('word').textContent = (playing && s.word) ? s.word : '';
+      el('top').style.display = (playing || (result && !video)) ? 'block' : 'none';
+      el('tiaMini').style.display = (playing || result) ? 'block' : 'none';
+      el('message').className = video ? 'pill' : '';
+      el('message').textContent = positioning ? (s.banner || '') : (s.message || (s.screen === 'menu' ? 'Agacha!' : ''));
+      stage.style.display = ((positioning || playing || result) && !video) ? 'block' : 'none';
+      stage.style.top = positioning ? '14vh' : '17vh';
+      stage.style.height = positioning ? '77vh' : '74vh';
       var showCam = positioning && camCode;
       if (showCam && !cam.getAttribute('data-on')) { cam.src = '/camera.mjpg?t=' + camCode; cam.setAttribute('data-on', '1'); }
-      cam.style.display = showCam ? 'block' : 'none';
-      setArms(play ? s.gesture : null);
+      cam.style.display = (showCam && !video) ? 'block' : 'none';
+      card.style.display = (result && s.word) ? 'block' : 'none';
+      card.style.background = s.background || '#333';
+      el('cardWord').textContent = s.word || '';
+      el('cardTag').textContent = s.trick ? 'Truque!' : '';
+      el('note').style.display = (result && s.note) ? 'block' : 'none';
+      el('note').textContent = s.note || '';
+      setArms((playing || result) ? s.gesture : null);
       var html = '';
       for (var i = 0; i < (s.players || []).length; i++) {
         var p = s.players[i];
@@ -148,6 +244,10 @@ enum TVPage {
               + p.name.replace(/</g, '&lt;') + (p.detail ? ' ' + p.detail : '') + '</span>';
       }
       el('players').innerHTML = html;
+      if (playing && s.word && s.command !== lastCommand) { lastCommand = s.command; lightning(s.word); }
+      if (!s.word) { lastCommand = null; }
+      if (playing && !s.word && s.banner && s.banner !== lastBanner) { lastBanner = s.banner; announce(s.banner); }
+      if (!s.banner) { lastBanner = null; }
       drawStage();
     }
     function pose(p){ lastPose = p; drawStage(); }
@@ -243,6 +343,8 @@ enum TVPage {
       es.addEventListener('stop', stopAll);
       es.onerror = function(){ el('status').textContent = 'Reconectando…'; };
     }
+    el('tiaMini').innerHTML = tiaSvg('m');
+    el('tiaCard').innerHTML = tiaSvg('c');
     setArms(null);
     connect();
     </script>
@@ -250,4 +352,4 @@ enum TVPage {
     </html>
     """#
 }
-// swiftlint:enable line_length
+// swiftlint:enable line_length type_body_length

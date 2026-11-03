@@ -96,13 +96,17 @@ extension GameLoop {
             }
             if let info = resultInfo {
                 let who = Self.joined(info.result.wrong.map { name(for: $0) })
-                return TVState(screen: "result", message: info.result.isTie ? "Todos erraram juntos!" : "\(who) errou!", players: players)
+                let command = info.result.command
+                return TVState(screen: "result", word: set.text(for: command.word), background: set.colorHex(for: command.word),
+                               gesture: command.gesture.rawValue, trick: command.isTrick,
+                               message: info.result.isTie ? "Todos erraram juntos!" : "\(who) errou!", players: players,
+                               replay: tv.hasReplay ? "/replay.mp4?v=\(tv.replayVersion)" : nil, note: measurementNote(info))
             }
             guard let command = shownCommand else {
                 return TVState(screen: "play", banner: countdownText, players: players)
             }
             return TVState(screen: "play", word: set.text(for: command.word), background: set.colorHex(for: command.word),
-                           gesture: command.gesture.rawValue, trick: command.isTrick, players: players)
+                           gesture: command.gesture.rawValue, trick: command.isTrick, players: players, command: command.number)
         }
     }
 
@@ -113,5 +117,13 @@ extension GameLoop {
         case 1: names[0]
         default: names.dropLast().joined(separator: ", ") + " e " + names[names.count - 1]
         }
+    }
+
+    /// "Paulo: mediu 0,36 · precisava ≤ 0,25" (o mesmo diagnóstico da tela do iPad).
+    private func measurementNote(_ info: ResultInfo) -> String? {
+        guard let slot = info.result.wrong.first, let index = info.result.details[slot]?.crouchIndex,
+              let rules = state.config?.rules else { return nil }
+        let needed = info.result.command.word == .up ? "≤ \(rules.standMax)" : "≥ \(rules.crouchMin)"
+        return "\(name(for: slot)): mediu \(index.formatted(.number.precision(.fractionLength(2)))) · precisava \(needed)"
     }
 }
