@@ -206,8 +206,8 @@ struct AvatarHead {
     private func drawLabel(in ctx: inout GraphicsContext, center: CGPoint, radius: CGFloat, box: CGRect) {
         guard let name = figure.name else { return }
         let suffix = figure.mood == .win ? " ★" : ""
-        let height = box.height * 0.085
-        let text = Text(name + suffix).font(.system(size: box.height * 0.06, weight: .bold)).foregroundColor(Color(hex: figure.colorHex))
+        let height = box.height * 0.085 * figure.labelScale
+        let text = Text(name + suffix).font(.system(size: box.height * 0.06 * figure.labelScale, weight: .bold)).foregroundColor(Color(hex: figure.colorHex))
         let resolved = ctx.resolve(text)
         let size = resolved.measure(in: CGSize(width: 400, height: 100))
         let y = max(box.minY + height * 0.1, center.y - radius * 1.15 - height * 1.25)

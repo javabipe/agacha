@@ -43,10 +43,46 @@ extension GameLoop {
         shots.setArmed(false)
         let moment = makeMoment(result)
         let poster = Self.renderPoster(moment)
+        let job = makeVideoJob(result, moment: moment)
         Task {
             let saved = await Task.detached { MomentStore.shared.save(moment, poster: poster, shots: photos) }.value
             lastSavedMoment = saved
+            if saved != nil, let job { await generateVideo(job) }
         }
+    }
+
+    var isGameOverPhase: Bool {
+        if case .gameOver = state.phase { return true }
+        return false
+    }
+
+    /// Enquanto uma partida está rolando o vídeo espera (para não atrapalhar a câmera nem a TV).
+    var isRoundActive: Bool { stage == .playing && !isGameOverPhase }
+
+    private func makeVideoJob(_ result: GameResult, moment: Moment) -> AvatarVideoJob? {
+        let scoring = state.config?.mode == .score
+        let players = result.ranking.compactMap { slot -> AvatarVideoPlayer? in
+            guard let player = state.players[slot] else { return nil }
+            let wins = result.winners.contains(slot) && (scoring ? player.coins > 0 : true)
+            return AvatarVideoPlayer(slot: slot, name: name(for: slot), colorHex: SlotColors.hex(slot), isWinner: wins)
+        }
+        guard poseTimeline.frames.count >= 12, !players.isEmpty,
+              let framing = poseTimeline.framing(targetAspect: 9.0 / 16.0) else { return nil }
+        return AvatarVideoJob(frames: poseTimeline.frames, aspect: poseTimeline.aspect, framing: framing, moment: moment, players: players)
+    }
+
+    /// Gera o vídeo de avatares do momento já salvo e o guarda junto dele.
+    private func generateVideo(_ job: AvatarVideoJob) async {
+        let id = job.moment.id
+        videoJobs.insert(id)
+        defer { videoJobs.remove(id) }
+        let temp = FileManager.default.temporaryDirectory.appending(path: "avatares-\(id.uuidString).mp4")
+        let done = await AvatarVideoExporter.export(job, to: temp, shouldPause: { [weak self] in self?.isRoundActive ?? false })
+        guard done, let updated = MomentStore.shared.attachVideo(to: id, from: temp) else {
+            try? FileManager.default.removeItem(at: temp)
+            return
+        }
+        lastSavedMoment = updated
     }
 
     /// Pôster vertical (imagem) com os avatares dançando e chorando e o placar.

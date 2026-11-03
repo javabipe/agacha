@@ -26,6 +26,8 @@ struct Moment: Identifiable, Sendable {
     var isSample = true
     /// Momento salvo: pôster de avatares e fotos reais ("shots") guardados no aparelho.
     var posterURL: URL?
+    /// Vídeo de avatares do momento (aparece depois de gerado).
+    var videoURL: URL?
     var shotURLs: [URL] = []
 
     init(id: UUID = UUID(), title: String, place: String, ago: String, durationSeconds: Int, views: Int, likes: Int,

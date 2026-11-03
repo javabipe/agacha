@@ -57,6 +57,7 @@ extension GameLoop {
             checkRaisedArms(report, at: analysis.timestamp)
         case .playing:
             replay.append(analysis)
+            if settings.saveMoments, !isGameOverPhase { poseTimeline.append(analysis) }
             if case .gameOver = state.phase, gameOverControlsActive { checkPlayAgainGesture(analysis) }
             guard case .window = state.phase else { return }
             let samples = analysis.people.compactMap { person -> PostureSample? in

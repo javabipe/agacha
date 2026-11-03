@@ -63,6 +63,10 @@ final class GameLoop {
     var shotCandidates: [Data] = []
     /// O momento da última partida, já salvo no aparelho (para compartilhar com as fotos).
     var lastSavedMoment: Moment?
+    /// Movimentos dos jogadores durante a partida (só números), para montar o vídeo de avatares no fim.
+    @ObservationIgnored var poseTimeline = PoseTimeline()
+    /// Momentos cujo vídeo de avatares ainda está sendo gerado.
+    var videoJobs: Set<UUID> = []
     let tv = TVBridge()
     var lastTVPublish = 0.0
     var lastTVPose = 0.0
@@ -156,6 +160,7 @@ final class GameLoop {
         if settings.recordReplay, settings.mode == .elimination { recorder.start() }
         shotCandidates = []
         lastSavedMoment = nil
+        poseTimeline.clear()
         shots.setArmed(settings.saveMoments)
         send(.start(config))
     }

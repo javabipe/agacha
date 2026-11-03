@@ -23,6 +23,7 @@ private struct Saved: Codable {
     let players: [SavedPlayer]
     let posterFile: String?
     let shotFiles: [String]
+    var videoFile: String?
 }
 
 struct MomentStore: Sendable {
@@ -84,6 +85,25 @@ struct MomentStore: Sendable {
         return saved.sorted { $0.date > $1.date }.map(restore(from:))
     }
 
+    /// Junta o vídeo de avatares (já gerado em `tempURL`) ao momento salvo. Devolve o momento atualizado.
+    @discardableResult
+    func attachVideo(to id: UUID, from tempURL: URL) -> Moment? {
+        let folder = root.appending(path: id.uuidString, directoryHint: .isDirectory)
+        let target = folder.appending(path: "avatares.mp4")
+        let jsonURL = folder.appending(path: "moment.json")
+        guard let data = try? Data(contentsOf: jsonURL), var saved = try? JSONDecoder().decode(Saved.self, from: data) else { return nil }
+        do {
+            try? FileManager.default.removeItem(at: target)
+            try FileManager.default.moveItem(at: tempURL, to: target)
+            try (target as NSURL).setResourceValue(FileProtectionType.complete, forKey: .fileProtectionKey)
+            saved.videoFile = "avatares.mp4"
+            try JSONEncoder().encode(saved).write(to: folder.appending(path: "moment.json"), options: .completeFileProtection)
+            return restore(from: saved)
+        } catch {
+            return nil
+        }
+    }
+
     func delete(_ id: UUID) {
         try? FileManager.default.removeItem(at: root.appending(path: id.uuidString, directoryHint: .isDirectory))
     }
@@ -107,6 +127,7 @@ struct MomentStore: Sendable {
         moment.isSample = false
         moment.posterURL = saved.posterFile.map { folder.appending(path: $0) }
         moment.shotURLs = saved.shotFiles.map { folder.appending(path: $0) }
+        moment.videoURL = saved.videoFile.map { folder.appending(path: $0) }
         return moment
     }
 }

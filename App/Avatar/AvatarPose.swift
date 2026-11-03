@@ -29,6 +29,8 @@ struct AvatarFigure {
     var floor: CGFloat?
     /// Intensidade do soluço de 0 a 1.
     var sob = 0.0
+    /// Tamanho da plaquinha com o nome (1 = o da TV; menor em caixas altas, como o vídeo vertical).
+    var labelScale: CGFloat = 1
 }
 
 /// Esqueleto-modelo em "unidades de altura" (como na TV): pés no chão (y = 0), cabeça em -0,68.

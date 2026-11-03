@@ -1,4 +1,5 @@
 import AganhaSocial
+import AVKit
 import SwiftUI
 import UIKit
 
@@ -11,8 +12,15 @@ struct ShareClipView: View {
         case done(SocialNetwork)
     }
 
+    enum Media: Hashable {
+        case photo, video
+    }
+
     let moment: Moment
     let onClose: () -> Void
+    @State private var media = Media.video
+    @State private var cover: UIImage?
+    @State private var playing = false
     @State private var caption = ""
     @State private var showRealKids = false
     @State private var stage = Stage.choosing
@@ -28,7 +36,7 @@ struct ShareClipView: View {
                 VStack(spacing: 20) {
                     header
                     HStack(alignment: .top, spacing: 20) {
-                        MomentPreview(moment: moment, photo: photo).frame(maxWidth: 230)
+                        VStack(spacing: 10) { preview; mediaPicker }.frame(maxWidth: 230)
                         VStack(alignment: .leading, spacing: 14) { options; destinations }
                     }
                     statusArea
@@ -42,7 +50,14 @@ struct ShareClipView: View {
             }
         }
         .foregroundStyle(.white)
-        .onAppear { if caption.isEmpty { caption = Self.suggestedCaption(for: moment) } }
+        .onAppear {
+            if caption.isEmpty { caption = Self.suggestedCaption(for: moment) }
+            if !hasVideo { media = .photo }
+        }
+        .task(id: moment.videoURL) { if let url = moment.videoURL { cover = await VideoThumbnail.image(for: url) } }
+        .fullScreenCover(isPresented: $playing) {
+            if let url = moment.videoURL { VideoPlayerSheet(url: url, onClose: { playing = false }) }
+        }
         .sheet(isPresented: $systemSheet) { ActivityView(items: shareItems) }
         .alert("Mostrar as crianças de verdade?", isPresented: $confirmReal) {
             Button("Sim, tenho autorização") { showRealKids = true }
@@ -50,6 +65,47 @@ struct ShareClipView: View {
         } message: {
             Text("A foto real mostra o rosto de quem jogou. Só compartilhe com a autorização dos responsáveis de cada criança.")
         }
+    }
+
+    private var hasVideo: Bool { moment.videoURL != nil || moment.isSample }
+
+    /// Prévia do que vai ser compartilhado: a foto/pôster ou a capa do vídeo (que toca ao tocar).
+    @ViewBuilder private var preview: some View {
+        if media == .video, let cover, moment.videoURL != nil {
+            Button { playing = true } label: { VideoCover(image: cover, duration: moment.durationText) }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Tocar o vídeo")
+        } else {
+            MomentPreview(moment: moment, photo: media == .photo ? photo : nil)
+                .overlay(alignment: .topTrailing) {
+                    if media == .video && moment.isSample {
+                        Label(moment.durationText, systemImage: "play.fill").font(.caption.weight(.bold)).padding(6)
+                            .background(.black.opacity(0.55), in: .capsule).padding(8)
+                    }
+                }
+        }
+    }
+
+    private var mediaPicker: some View {
+        VStack(spacing: 4) {
+            Picker("Compartilhar", selection: $media) {
+                Text("Foto").tag(Media.photo)
+                Text("Vídeo").tag(Media.video)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!hasVideo)
+            if !hasVideo {
+                Text("O vídeo deste momento ainda não está pronto ou não foi guardado.")
+                    .font(.caption2)
+                    .foregroundStyle(Color.aganhaCream.opacity(0.65))
+            }
+        }
+    }
+
+    /// O arquivo que sai: o vídeo de avatares ou a imagem (avatares ou foto real) com placar e marca.
+    private func currentFile() -> (url: URL, kind: ShareItem.Kind)? {
+        if media == .video, let url = moment.videoURL { return (url, .video) }
+        return exportImage().map { ($0, .image) }
     }
 
     private var photo: UIImage? {
@@ -102,6 +158,12 @@ struct ShareClipView: View {
                 .background(.white, in: .rect(cornerRadius: 12))
                 .foregroundStyle(Color(hex: "#1B1433"))
                 .tint(Color(hex: "#1FA98A"))
+            if media == .photo { realToggle }
+        }
+    }
+
+    private var realToggle: some View {
+        VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: Binding(get: { showRealKids }, set: { if $0 { confirmReal = true } else { showRealKids = false } })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Mostrar as crianças de verdade").font(.headline)
@@ -148,7 +210,8 @@ struct ShareClipView: View {
         case let .done(network):
             VStack(spacing: 8) {
                 Text("✅ Pronto! (simulação)").font(.title3.weight(.heavy))
-                Text("Com a integração ligada, aqui o \(network.title) abriria com o vídeo.").font(.callout)
+                let what = media == .video ? String(localized: "o vídeo") : String(localized: "a foto")
+                Text("Com a integração ligada, aqui o \(network.title) abriria com \(what).").font(.callout)
                 Button("Compartilhar em outro lugar") { stage = .choosing }.buttonStyle(.bordered)
             }
             .padding(16)
@@ -158,20 +221,22 @@ struct ShareClipView: View {
 
     private func send(to network: SocialNetwork) {
         if network == .more {
-            shareItems = [caption] + (exportImage().map { [$0] } ?? [])
+            shareItems = [caption] + (currentFile().map { [$0.url] } ?? [])
             systemSheet = true
             return
         }
         Task {
-            let steps = [String(localized: "Montando o vídeo vertical 9:16…"), String(localized: "Colocando o placar e a marca do jogo…"),
+            let preparing = media == .video ? String(localized: "Preparando o vídeo vertical 9:16…")
+                : String(localized: "Preparando a imagem…")
+            let steps = [preparing, String(localized: "Colocando o placar e a marca do jogo…"),
                          String(localized: "Abrindo \(network.title)…")]
             for (index, step) in steps.enumerated() {
                 stage = .sending(network, progress: Double(index) / Double(steps.count), step: step)
                 try? await Task.sleep(for: .milliseconds(700))
             }
             // A integração de verdade (SDK ou esquema de URL) já está ligada aqui, mas desligada: responde "simulação".
-            if let url = exportImage() {
-                let item = ShareItem(fileURL: url, kind: .image, caption: caption)
+            if let file = currentFile() {
+                let item = ShareItem(fileURL: file.url, kind: file.kind, caption: caption)
                 _ = await SocialShareCenter.shared.share(item, to: network.platform)
             }
             stage = .done(network)

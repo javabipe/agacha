@@ -34,7 +34,8 @@ struct MomentsView: View {
                         } else {
                             LazyVGrid(columns: columns, spacing: 16) {
                                 ForEach(saved) { moment in
-                                    MomentCard(moment: moment, onShare: { sharing = moment }, onDelete: { deleting = moment })
+                                    MomentCard(moment: moment, onShare: { sharing = moment }, onDelete: { deleting = moment },
+                                               isGenerating: loop.videoJobs.contains(moment.id))
                                 }
                             }
                         }
@@ -51,6 +52,7 @@ struct MomentsView: View {
         }
         .foregroundStyle(.white)
         .onAppear(perform: reload)
+        .onChange(of: loop.videoJobs) { reload() }
         .sheet(item: $sharing) { moment in ShareClipView(moment: moment, onClose: { sharing = nil }) }
         .confirmationDialog("Apagar este momento?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
                             titleVisibility: .visible) {

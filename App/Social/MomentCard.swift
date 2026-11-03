@@ -7,8 +7,12 @@ struct MomentCard: View {
     let onShare: () -> Void
     /// Só nos momentos salvos (os de exemplo não se apagam).
     var onDelete: (() -> Void)?
+    /// O vídeo de avatares deste momento ainda está sendo gerado.
+    var isGenerating = false
     @State private var showReal = false
     @State private var liked = false
+    @State private var cover: UIImage?
+    @State private var playing = false
 
     private var shot: UIImage? { moment.shotURLs.first.flatMap { UIImage(contentsOfFile: $0.path) } }
     private var poster: UIImage? { moment.posterURL.flatMap { UIImage(contentsOfFile: $0.path) } }
@@ -29,13 +33,30 @@ struct MomentCard: View {
         }
         .padding(10)
         .background(.black.opacity(0.28), in: .rect(cornerRadius: 22))
+        .task(id: moment.videoURL) {
+            if let url = moment.videoURL { cover = await VideoThumbnail.image(for: url) }
+        }
     }
 
     @ViewBuilder private var preview: some View {
         if showReal, let shot {
             MomentPreview(moment: moment, photo: shot)
+        } else if let cover, let url = moment.videoURL {
+            Button { playing = true } label: { VideoCover(image: cover, duration: moment.durationText) }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Tocar o vídeo")
+                .fullScreenCover(isPresented: $playing) { VideoPlayerSheet(url: url, onClose: { playing = false }) }
         } else if !moment.isSample, let poster {
             Image(uiImage: poster).resizable().scaledToFit().clipShape(.rect(cornerRadius: 22))
+                .overlay(alignment: .bottom) {
+                    if isGenerating {
+                        Label("Gerando o vídeo…", systemImage: "film")
+                            .font(.caption.weight(.bold))
+                            .padding(8)
+                            .background(.black.opacity(0.65), in: .capsule)
+                            .padding(10)
+                    }
+                }
         } else {
             MomentPreview(moment: moment, showsOverlay: moment.isSample ? false : true)
                 .overlay(alignment: .topTrailing) {
