@@ -25,14 +25,20 @@ struct MenuView: View {
                     .padding(.top, 40)
 
                     VStack(alignment: .leading, spacing: 20) {
+                        picker("Modo", selection: $loop.settings.mode, options: GameMode.allCases, label: Self.name)
+                        if loop.settings.mode == .score {
+                            picker("Rodadas", selection: $loop.settings.scoreRounds, options: [8, 10, 15]) { "\($0)" }
+                        }
                         picker("Nível", selection: $loop.settings.difficulty, options: Difficulty.allCases, label: Self.name)
                         picker("Tempo para reagir", selection: $loop.settings.tolerance, options: Tolerance.allCases, label: Self.name)
                         picker("Comandos", selection: $loop.settings.commandSet, options: [.classic, .school], label: Self.name)
-                        picker("Erros permitidos por jogador", selection: $loop.settings.maxErrors, options: [1, 2, 3, 5, 99]) {
-                            switch $0 {
-                            case 1: String(localized: "1 (sai no primeiro)")
-                            case 99: String(localized: "Sem limite")
-                            default: "\($0)"
+                        if loop.settings.mode == .elimination {
+                            picker("Erros permitidos por jogador", selection: $loop.settings.maxErrors, options: [1, 2, 3, 5, 99]) {
+                                switch $0 {
+                                case 1: String(localized: "1 (sai no primeiro)")
+                                case 99: String(localized: "Sem limite")
+                                default: "\($0)"
+                                }
                             }
                         }
                         Toggle("Perguntar o nome de cada jogador", isOn: $loop.settings.askNames)
@@ -43,9 +49,11 @@ struct MenuView: View {
                                 .font(.headline)
                                 .foregroundStyle(Color.aganhaCream)
                         }
-                        Toggle("Replay em vídeo do erro (apagado em seguida)", isOn: $loop.settings.recordReplay)
-                            .font(.headline)
-                            .foregroundStyle(Color.aganhaCream)
+                        if loop.settings.mode == .elimination {
+                            Toggle("Replay em vídeo do erro (apagado em seguida)", isOn: $loop.settings.recordReplay)
+                                .font(.headline)
+                                .foregroundStyle(Color.aganhaCream)
+                        }
                     }
                     .padding(20)
                     .background(.black.opacity(0.3), in: .rect(cornerRadius: 20))
@@ -135,6 +143,13 @@ struct MenuView: View {
                 ForEach(options, id: \.self) { Text(label($0)).tag($0) }
             }
             .pickerStyle(.segmented)
+        }
+    }
+
+    private static func name(_ mode: GameMode) -> String {
+        switch mode {
+        case .elimination: String(localized: "Eliminação")
+        case .score: String(localized: "Pontuação")
         }
     }
 

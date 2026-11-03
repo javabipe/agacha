@@ -71,6 +71,21 @@ extension GameLoop {
     }
 
     func tvState() -> TVState {
+        var tvState = baseTVState()
+        if stage == .playing, let config = state.config, config.mode == .score {
+            let entries = config.slots.map { slot -> TVState.ScoreEntry in
+                let player = state.players[slot]
+                let score = lastScore(for: slot)
+                return TVState.ScoreEntry(name: name(for: slot), color: SlotColors.hex(slot), tier: score?.tier.rawValue ?? "",
+                                           ms: score?.reactionMs, gain: score?.coins ?? 0, total: player?.coins ?? 0,
+                                           combo: player?.combo ?? 0, multiplier: score?.multiplier ?? 1)
+            }
+            tvState.score = TVState.Score(round: state.history.count, rounds: config.scoreRounds, entries: entries)
+        }
+        return tvState
+    }
+
+    private func baseTVState() -> TVState {
         let set = state.config?.commandSet ?? settings.commandSet
         switch stage {
         case .idle:
@@ -88,7 +103,8 @@ extension GameLoop {
                                out: state.players[slot]?.isEliminated ?? false, detail: statusDetail(for: slot))
             }
             if case .gameOver = state.phase, state.config?.solo == true {
-                return TVState(screen: "gameover", message: "Fim do treino: \(soloScore) acertos!", players: players)
+                let summary = isScoreMode ? "Fim: \(soloScore) moedas!" : "Fim do treino: \(soloScore) acertos!"
+                return TVState(screen: "gameover", message: summary, players: players)
             }
             if case let .gameOver(result) = state.phase {
                 let winners = result.winners.map { name(for: $0) }

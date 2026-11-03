@@ -79,7 +79,15 @@ struct PlayView: View {
         }
     }
 
-    private var statusStrip: some View {
+    @ViewBuilder private var statusStrip: some View {
+        if loop.isScoreMode {
+            ScoreStripView(loop: loop)
+        } else {
+            chipStrip
+        }
+    }
+
+    private var chipStrip: some View {
         HStack(spacing: 8) {
             ForEach(loop.state.config?.slots ?? [], id: \.self) { slot in
                 SlotChip(slot: slot, name: loop.name(for: slot), isOut: loop.state.players[slot]?.isEliminated ?? false,

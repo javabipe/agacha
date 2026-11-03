@@ -8,6 +8,9 @@ struct GameSettings: Equatable {
     var askNames = true
     /// Treino com um único jogador.
     var solo = false
+    /// Eliminação (padrão) ou pontuação por rapidez, e quantas rodadas tem a partida de pontuação.
+    var mode: GameMode = .elimination
+    var scoreRounds = 10
     /// Erros que cada jogador pode cometer antes de sair.
     var maxErrors = 1
     /// Replay em vídeo da rodada (gravado só por alguns segundos e apagado em seguida).

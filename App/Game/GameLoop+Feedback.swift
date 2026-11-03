@@ -35,6 +35,15 @@ extension GameLoop {
 
     func celebrate(_ result: GameResult) {
         gameTask = Task {
+            if state.config?.solo == true, state.config?.mode == .score {
+                let player = state.config?.slots.first.flatMap { state.players[$0] }
+                var line = soloIsRecord ? "Novo recorde! Você juntou \(soloScore) moedas!" : "Fim! Você juntou \(soloScore) moedas."
+                if let average = player?.averageReactionMs { line += " Sua reação média foi \(Self.spokenSeconds(average)) segundos." }
+                await audio.speak(line)
+                guard !Task.isCancelled else { return }
+                startGameOverControls()
+                return
+            }
             if state.config?.solo == true {
                 let line = soloIsRecord ? "Novo recorde! Você acertou \(soloScore)!" : "Fim do treino! Você acertou \(soloScore)."
                 await audio.speak(line)
@@ -60,6 +69,7 @@ extension GameLoop {
     /// ✕ para quem saiu; corações restantes quando a partida permite mais de um erro.
     func statusDetail(for slot: ChildSlot) -> String? {
         guard let player = state.players[slot] else { return nil }
+        if state.config?.mode == .score { return "🪙 \(player.coins)" }
         if player.isEliminated { return "✕" }
         let limit = state.config?.maxErrors ?? 1
         guard limit > 1 else { return nil }

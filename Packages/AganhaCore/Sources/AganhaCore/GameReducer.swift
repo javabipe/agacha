@@ -23,11 +23,14 @@ public enum GameReducer {
             return []
 
         case .windowClosed:
-            guard case let .window(command, _, closes) = state.phase else { return [] }
+            guard case let .window(command, opens, closes) = state.phase else { return [] }
+            if state.config?.mode == .score {
+                return judgeScore(&state, command: command, commandStart: opens - windowOpensAfter, windowEnd: closes)
+            }
             return judge(&state, command: command, windowEnd: closes)
 
         case .unfair:
-            guard case .result = state.phase else { return [] }
+            guard case .result = state.phase, state.config?.mode != .score else { return [] }
             state.players = state.snapshot
             state.director = state.directorSnapshot
             state.history.removeLast()
@@ -159,6 +162,81 @@ public enum GameReducer {
         state.history.append(result)
         state.phase = .result(result)
         return [.showResult(result)]
+    }
+
+    /// Modo pontuação: ninguém sai; cada acerto vira moedas pela rapidez (e pelo combo) e a partida acaba na última rodada.
+    private static func judgeScore(_ state: inout GameState, command: Command, commandStart: Double,
+                                   windowEnd: Double) -> [GameEffect] {
+        guard let config = state.config else { return [] }
+        let rules = config.scoreRules
+        let rising = state.history.last?.command.word == .down && command.word == .up
+        var verdicts: [ChildSlot: Verdict] = [:]
+        var details: [ChildSlot: Judge.Assessment] = [:]
+        var scores: [ChildSlot: RoundScore] = [:]
+        var missed: [ChildSlot] = []
+
+        for slot in state.players.keys.sorted() {
+            let samples = state.samples[slot] ?? []
+            let assessment = Judge.assess(expected: command.word, samples: samples, windowEnd: windowEnd, rules: config.rules)
+            verdicts[slot] = assessment.verdict
+            details[slot] = assessment
+            var player = state.players[slot] ?? PlayerState()
+            guard assessment.verdict == .ok else {
+                if assessment.verdict == .wrong { player.errors += 1 }
+                player.combo = 0
+                missed.append(slot)
+                scores[slot] = RoundScore(tier: .miss, reactionMs: nil, coins: 0, multiplier: 1, combo: 0)
+                state.players[slot] = player
+                continue
+            }
+            var tier = ScoreTier.good
+            var reactionMs: Int?
+            switch Judge.settle(expected: command.word, samples: samples, windowEnd: windowEnd, rules: config.rules) {
+            case .held:
+                tier = .held
+            case let .at(time):
+                let ms = max(0, Int(((time - commandStart) * 1000).rounded()))
+                reactionMs = ms
+                tier = rules.tier(reactionMs: ms, rising: rising)
+            case .never:
+                break
+            }
+            player.combo += 1
+            player.bestCombo = max(player.bestCombo, player.combo)
+            let multiplier = rules.multiplier(forCombo: player.combo)
+            let coins = rules.baseCoins(for: tier) * multiplier
+            player.coins += coins
+            player.points += coins
+            player.correct += 1
+            if let reactionMs {
+                player.reactionTotalMs += reactionMs
+                player.reactionCount += 1
+                player.bestReactionMs = min(player.bestReactionMs ?? reactionMs, reactionMs)
+            }
+            scores[slot] = RoundScore(tier: tier, reactionMs: reactionMs, coins: coins, multiplier: multiplier, combo: player.combo)
+            state.players[slot] = player
+        }
+
+        let finished: GameResult? = state.round >= config.scoreRounds ? makeScoreResult(state) : nil
+        var result = RoundResult(command: command, verdicts: verdicts, details: details, wrong: missed.sorted(), eliminated: [],
+                                 survivors: state.survivors, isTie: false, finished: finished)
+        result.scores = scores
+        state.history.append(result)
+        state.phase = .result(result)
+        return [.showResult(result)]
+    }
+
+    /// Mais moedas vence (empate de moedas = empate); na lista, desempata quem teve a média de reação mais rápida.
+    private static func makeScoreResult(_ state: GameState) -> GameResult {
+        let ranking = state.players.sorted { lhs, rhs in
+            if lhs.value.coins != rhs.value.coins { return lhs.value.coins > rhs.value.coins }
+            let l = lhs.value.averageReactionMs ?? Int.max
+            let r = rhs.value.averageReactionMs ?? Int.max
+            return l != r ? l < r : lhs.key < rhs.key
+        }.map(\.key)
+        let best = state.players.values.map(\.coins).max() ?? 0
+        let winners = state.players.filter { $0.value.coins == best }.map(\.key).sorted()
+        return GameResult(winners: winners, ranking: ranking)
     }
 
     private static func makeResult(_ state: GameState, winners: [ChildSlot]) -> GameResult {

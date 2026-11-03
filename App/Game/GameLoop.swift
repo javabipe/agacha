@@ -34,7 +34,7 @@ final class GameLoop {
     var guidance: Guidance?
     var cameraError: String?
     var countdownText: String?
-    private(set) var shownCommand: Command?
+    var shownCommand: Command?
     private(set) var resultInfo: ResultInfo?
     /// Vídeo temporário da última rodada com erro (apagado ao seguir em frente).
     var replayAsset: AVAsset?
@@ -79,7 +79,7 @@ final class GameLoop {
     var playAgainSince: Double?
     var replayTask: Task<Void, Never>?
     private var closeTask: Task<Void, Never>?
-    private var resultTask: Task<Void, Never>?
+    var resultTask: Task<Void, Never>?
     var promptTask: Task<Void, Never>?
     var namingTask: Task<Void, Never>?
     var readySince: Double?
@@ -144,8 +144,9 @@ final class GameLoop {
         stage = .playing
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
-                                maxErrors: settings.maxErrors, displayDelay: settings.tvDelay, solo: settings.solo)
-        if settings.recordReplay { recorder.start() }
+                                maxErrors: settings.maxErrors, displayDelay: settings.tvDelay, solo: settings.solo,
+                                mode: settings.mode, scoreRounds: settings.scoreRounds)
+        if settings.recordReplay, settings.mode == .elimination { recorder.start() }
         send(.start(config))
     }
 
@@ -206,7 +207,7 @@ final class GameLoop {
         case let .showResult(result): showResult(result)
         case let .finished(result):
             recorder.stop()
-            recordSoloScore()
+            if state.config?.mode == .score { recordSoloCoins() } else { recordSoloScore() }
             celebrate(result)
         }
     }
@@ -268,6 +269,10 @@ final class GameLoop {
     }
 
     private func showResult(_ result: RoundResult) {
+        if state.config?.mode == .score {
+            showScoreResult(result)
+            return
+        }
         shownCommand = nil
         let hasDrama = !result.wrong.isEmpty || result.isTie
         let withVideo = hasDrama && settings.recordReplay

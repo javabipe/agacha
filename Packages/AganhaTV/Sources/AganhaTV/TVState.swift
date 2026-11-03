@@ -2,6 +2,44 @@ import Foundation
 
 /// O que a TV mostra agora. É só texto e cores (nada de imagem da câmera): a página da TV desenha tudo.
 public struct TVState: Codable, Equatable, Sendable {
+    /// Resultado de um jogador no placar do modo pontuação.
+    public struct ScoreEntry: Codable, Equatable, Sendable {
+        public var name: String
+        public var color: String
+        /// `perfect`, `great`, `good`, `held`, `miss` ou vazio (ainda sem rodada).
+        public var tier: String
+        public var ms: Int?
+        /// Moedas ganhas na última rodada, já com o multiplicador.
+        public var gain: Int
+        public var total: Int
+        public var combo: Int
+        public var multiplier: Int
+
+        public init(name: String, color: String, tier: String, ms: Int?, gain: Int, total: Int, combo: Int, multiplier: Int) {
+            self.name = name
+            self.color = color
+            self.tier = tier
+            self.ms = ms
+            self.gain = gain
+            self.total = total
+            self.combo = combo
+            self.multiplier = multiplier
+        }
+    }
+
+    /// Placar do modo pontuação. `round` muda a cada rodada julgada (a página dispara os efeitos nessa hora).
+    public struct Score: Codable, Equatable, Sendable {
+        public var round: Int
+        public var rounds: Int
+        public var entries: [ScoreEntry]
+
+        public init(round: Int, rounds: Int, entries: [ScoreEntry]) {
+            self.round = round
+            self.rounds = rounds
+            self.entries = entries
+        }
+    }
+
     public struct Replay: Codable, Equatable, Sendable {
         public var frames: Int
         public var version: Int
@@ -71,10 +109,12 @@ public struct TVState: Codable, Equatable, Sendable {
     public var replay: Replay?
     /// Linha pequena de diagnóstico ("mediu 0,36 · precisava ≤ 0,25").
     public var note: String?
+    /// Modo pontuação: moedas e resultado da última rodada de cada jogador.
+    public var score: Score?
 
     public init(screen: String, word: String? = nil, background: String? = nil, gesture: String? = nil, trick: Bool = false,
                 banner: String? = nil, message: String? = nil, players: [Player] = [],
-                replay: Replay? = nil, note: String? = nil) {
+                replay: Replay? = nil, note: String? = nil, score: Score? = nil) {
         self.screen = screen
         self.word = word
         self.background = background
@@ -85,6 +125,7 @@ public struct TVState: Codable, Equatable, Sendable {
         self.players = players
         self.replay = replay
         self.note = note
+        self.score = score
     }
 
     public func json() -> Data {

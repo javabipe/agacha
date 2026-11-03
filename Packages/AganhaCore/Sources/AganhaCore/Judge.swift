@@ -34,6 +34,30 @@ public enum Judge {
         public let trace: [TracePoint]
     }
 
+    /// Quando o jogador chegou à postura certa e ficou nela até o fim da janela.
+    public enum Settle: Sendable, Equatable {
+        /// Já estava na postura certa desde a primeira medida da janela.
+        case held
+        /// Instante (mesmo relógio das amostras) da primeira medida certa depois da última errada.
+        case at(Double)
+        /// No fim da janela não estava na postura certa.
+        case never
+    }
+
+    /// Mesma régua do julgamento (postura e, se houver, índice de agachamento), olhando a janela toda.
+    public static func settle(expected: Stance, samples: [PostureSample], windowEnd: Double,
+                              rules: JudgeRules = JudgeRules()) -> Settle {
+        let ordered = samples.filter { $0.timestamp <= windowEnd }.sorted { $0.timestamp < $1.timestamp }
+        func satisfied(_ sample: PostureSample) -> Bool {
+            guard sample.posture == expected.posture else { return false }
+            guard let index = sample.crouchIndex else { return true }
+            return expected == .up ? index <= rules.standMax : index >= rules.crouchMin
+        }
+        guard let last = ordered.last, satisfied(last) else { return .never }
+        guard let lastWrong = ordered.lastIndex(where: { !satisfied($0) }) else { return .held }
+        return .at(ordered[lastWrong + 1].timestamp)
+    }
+
     /// Uma medida a cada 0,3 s nos últimos 1,5 s da janela.
     static func trace(of samples: [PostureSample], windowEnd: Double) -> [TracePoint] {
         let ordered = samples.filter { $0.timestamp <= windowEnd }.sorted { $0.timestamp < $1.timestamp }

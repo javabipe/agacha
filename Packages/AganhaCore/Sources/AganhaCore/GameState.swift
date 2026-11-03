@@ -13,10 +13,16 @@ public struct GameConfig: Sendable, Equatable {
     public var displayDelay: Double
     /// Treino com um único jogador: a partida acaba quando ele atinge o limite de erros.
     public var solo: Bool
+    /// Eliminação (padrão) ou pontuação por rapidez.
+    public var mode: GameMode
+    /// Rodadas da partida no modo pontuação.
+    public var scoreRounds: Int
+    public var scoreRules: ScoreRules
 
     public init(slots: [ChildSlot], difficulty: Difficulty = .sapeca, tolerance: Tolerance = .normal,
                 commandSet: CommandSet = .classic, seed: UInt64, maxAbsentStreak: Int = 3,
-                rules: JudgeRules = JudgeRules(), maxErrors: Int = 1, displayDelay: Double = 0, solo: Bool = false) {
+                rules: JudgeRules = JudgeRules(), maxErrors: Int = 1, displayDelay: Double = 0, solo: Bool = false,
+                mode: GameMode = .elimination, scoreRounds: Int = 10, scoreRules: ScoreRules = ScoreRules()) {
         self.slots = slots
         self.difficulty = difficulty
         self.tolerance = tolerance
@@ -27,6 +33,9 @@ public struct GameConfig: Sendable, Equatable {
         self.maxErrors = max(1, maxErrors)
         self.displayDelay = min(max(0, displayDelay), 10)
         self.solo = solo
+        self.mode = mode
+        self.scoreRounds = min(max(1, scoreRounds), 50)
+        self.scoreRules = scoreRules
     }
 }
 
@@ -39,6 +48,15 @@ public struct PlayerState: Sendable, Equatable {
     public var errors = 0
     public var points = 0
     public var absentStreak = 0
+    /// Modo pontuação: moedas, acertos seguidos e tempos de reação.
+    public var coins = 0
+    public var combo = 0
+    public var bestCombo = 0
+    public var reactionTotalMs = 0
+    public var reactionCount = 0
+    public var bestReactionMs: Int?
+
+    public var averageReactionMs: Int? { reactionCount == 0 ? nil : reactionTotalMs / reactionCount }
 
     public init() {}
 }
@@ -65,6 +83,8 @@ public struct RoundResult: Sendable, Equatable {
     public let isTie: Bool
     /// Preenchido quando esta rodada encerra a partida.
     public let finished: GameResult?
+    /// Modo pontuação: o que cada jogador ganhou nesta rodada (vazio na eliminação).
+    public var scores: [ChildSlot: RoundScore] = [:]
 }
 
 public enum GamePhase: Sendable, Equatable {

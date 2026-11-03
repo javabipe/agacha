@@ -9,6 +9,8 @@ struct GameOverView: View {
     var heard = ""
     /// Treino solo: sem campeão nem ranking, só os acertos e o recorde.
     var solo: SoloSummary?
+    /// Modo pontuação: moedas e tempos de cada jogador, do primeiro ao último.
+    var scoreLines: [ScoreLine]?
     let onPlayAgain: () -> Void
     let onMenu: () -> Void
 
@@ -30,7 +32,7 @@ struct GameOverView: View {
                         }
                     }
                     if solo == nil {
-                        ranking
+                        if let scoreLines { scoreboard(scoreLines) } else { ranking }
                     }
                     voiceHint
                     buttons
@@ -51,13 +53,43 @@ struct GameOverView: View {
             Text("\(summary.score)")
                 .font(.system(size: 120, weight: .black, design: .rounded))
                 .foregroundStyle(Color.aganhaCream)
-            Text(summary.score == 1 ? "acerto" : "acertos")
+            Text(summary.isScore ? (summary.score == 1 ? "moeda" : "moedas") : (summary.score == 1 ? "acerto" : "acertos"))
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.aganhaCream.opacity(0.85))
+            if summary.isScore {
+                VStack(spacing: 4) {
+                    if let average = summary.averageMs { Text("Reação média: \(Self.seconds(average)) s").font(.title3.weight(.semibold)) }
+                    if let best = summary.bestMs { Text("Mais rápido: \(Self.seconds(best)) s").font(.title3.weight(.semibold)) }
+                    if summary.bestCombo > 1 { Text("Maior sequência: \(summary.bestCombo) acertos").font(.title3) }
+                }
+                .foregroundStyle(Color.aganhaCream)
+            }
             if summary.isRecord {
                 Text("🏆 Novo recorde!").font(.title.weight(.heavy)).foregroundStyle(Color.green)
             } else {
                 Text("Recorde: \(summary.best)").font(.title3).foregroundStyle(Color.aganhaCream.opacity(0.8))
+            }
+        }
+    }
+
+    static func seconds(_ ms: Int) -> String {
+        (Double(ms) / 1000).formatted(.number.precision(.fractionLength(2)))
+    }
+
+    /// Placar do modo pontuação: posição, jogador, moedas e tempos de reação.
+    private func scoreboard(_ lines: [ScoreLine]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(lines.enumerated()), id: \.element.slot) { index, line in
+                HStack(spacing: 12) {
+                    Text("\(index + 1)º").font(.title2.weight(.bold)).frame(width: 52, alignment: .trailing)
+                    SlotChip(slot: line.slot, name: name(line.slot), detail: "🪙 \(line.coins)")
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let average = line.averageMs { Text("média \(Self.seconds(average)) s").font(.callout) }
+                        if let best = line.bestMs { Text("melhor \(Self.seconds(best)) s").font(.callout) }
+                    }
+                    .foregroundStyle(Color.aganhaCream.opacity(0.85))
+                }
+                .foregroundStyle(Color.aganhaCream)
             }
         }
     }
@@ -105,4 +137,9 @@ struct SoloSummary {
     let score: Int
     let best: Int
     let isRecord: Bool
+    /// Modo pontuação: `score` são moedas e vêm os tempos de reação.
+    var isScore = false
+    var averageMs: Int?
+    var bestMs: Int?
+    var bestCombo = 0
 }
