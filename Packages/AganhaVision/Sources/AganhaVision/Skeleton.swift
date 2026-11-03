@@ -2,6 +2,7 @@ import Foundation
 
 public enum JointName: String, Codable, CaseIterable, Sendable {
     case nose
+    case leftEye, rightEye, leftEar, rightEar
     case leftShoulder, rightShoulder
     case leftElbow, rightElbow
     case leftWrist, rightWrist

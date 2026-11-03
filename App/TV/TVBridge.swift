@@ -18,9 +18,9 @@ final class TVBridge {
     /// Mostrar a câmera de verdade na tela de posicionamento (teste). Exige o código na URL.
     private(set) var cameraOn = false
     private(set) var cameraAddress: String?
-    /// O replay em vídeo está pronto para a TV baixar (número muda a cada replay).
-    private(set) var replayVersion = 0
-    private(set) var hasReplay = false
+    /// O replay (quadros JPEG) está pronto para a TV baixar; a versão muda a cada replay.
+    private(set) var replay: TVState.Replay?
+    private var replayVersion = 0
     /// Tocar os sons na TV (em vez do iPad) quando houver TV conectada.
     var soundOnTV = true
 
@@ -43,7 +43,7 @@ final class TVBridge {
         guard on != isOn, !isStarting else { return }
         guard on else {
             server.stop()
-            hasReplay = false
+            replay = nil
             cameraStreamer.setEnabled(false)
             isOn = false
             address = nil
@@ -69,11 +69,15 @@ final class TVBridge {
         }
     }
 
-    /// Entrega (ou apaga) o vídeo do replay à TV. Só serve a quem tem o código da câmera.
-    func setReplay(_ mp4: Data?) {
-        server.setReplay(mp4)
-        hasReplay = mp4 != nil
-        if mp4 != nil { replayVersion += 1 }
+    /// Entrega (ou apaga, com lista vazia) os quadros do replay à TV. Só serve a quem tem o código da câmera.
+    func setReplay(_ frames: [Data], framesPerSecond: Int = 10) {
+        server.setReplayFrames(frames)
+        guard !frames.isEmpty else {
+            replay = nil
+            return
+        }
+        replayVersion += 1
+        replay = TVState.Replay(frames: frames.count, version: replayVersion, fps: framesPerSecond)
     }
 
     func publishPose(_ pose: TVPose) {

@@ -53,7 +53,8 @@ extension GameLoop {
         lastTVPose = now
         func rounded(_ value: Double) -> Double { (value * 1000).rounded() / 1000 }
         let keys: [JointName: String] = [
-            .nose: "n", .leftShoulder: "ls", .rightShoulder: "rs", .leftElbow: "le", .rightElbow: "re",
+            .nose: "n", .leftEye: "ley", .rightEye: "rey", .leftEar: "lea", .rightEar: "rea",
+            .leftShoulder: "ls", .rightShoulder: "rs", .leftElbow: "le", .rightElbow: "re",
             .leftWrist: "lw", .rightWrist: "rw", .leftHip: "lh", .rightHip: "rh",
             .leftKnee: "lk", .rightKnee: "rk", .leftAnkle: "la", .rightAnkle: "ra"
         ]
@@ -97,7 +98,7 @@ extension GameLoop {
             if let info = resultInfo {
                 let who = Self.joined(info.result.wrong.map { name(for: $0) })
                 return TVState(screen: "result", message: info.result.isTie ? "Todos erraram juntos!" : "\(who) errou!", players: players,
-                               replay: tv.hasReplay ? "/replay.mp4?v=\(tv.replayVersion)" : nil, note: measurementNote(info))
+                               replay: tv.replay, note: measurementNote(info))
             }
             guard let command = shownCommand else {
                 return TVState(screen: "play", banner: countdownText, players: players)

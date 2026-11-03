@@ -1,4 +1,4 @@
-// swiftlint:disable line_length type_body_length
+// swiftlint:disable line_length type_body_length file_length
 /// Página que a TV abre. Escrita em JavaScript simples (ES5) para funcionar em navegadores de TV mais antigos.
 enum TVPage {
     static let html = #"""
@@ -31,7 +31,7 @@ enum TVPage {
     </head>
     <body>
     <div id="bg"></div>
-    <video id="replay" muted loop autoplay playsinline></video>
+    <canvas id="replay"></canvas>
     <div id="message"></div>
     <img id="cam" alt="">
     <canvas id="stage"></canvas>
@@ -58,23 +58,31 @@ enum TVPage {
     function el(id){ return document.getElementById(id); }
 
     // ---------- avatares (desenhados a partir das juntas do corpo, nunca da imagem)
-    var SKIN = '#FFD9B8', SKIN_EDGE = '#C98F6A', blinking = false;
+    var SKIN = '#FFD9B8', SKIN_EDGE = '#B97F5C', INK = '#2B2140', blinking = false;
+    var QUALITY = parseFloat((location.search.match(/[?&]q=([0-9.]+)/) || [])[1]) || 1.5;
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
     function shade(hex, f){
       var n = parseInt(hex.replace('#', ''), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-      return 'rgb(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ')';
+      return 'rgb(' + clamp(Math.round(r * f), 0, 255) + ',' + clamp(Math.round(g * f), 0, 255) + ',' + clamp(Math.round(b * f), 0, 255) + ')';
+    }
+    // Mistura com branco (t de 0 a 1) para o brilho.
+    function tint(hex, t){
+      var n = parseInt(hex.replace('#', ''), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      return 'rgb(' + Math.round(r + (255 - r) * t) + ',' + Math.round(g + (255 - g) * t) + ',' + Math.round(b + (255 - b) * t) + ')';
     }
     function mid(a, b){ return (a && b) ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] : (a || b); }
     function dot(g, p, r, color){ if (!p) return; g.fillStyle = color; g.beginPath(); g.arc(p[0], p[1], r, 0, 6.2832); g.fill(); }
-    // Membro de um ou mais segmentos (juntas que faltam são puladas), com contorno escuro por baixo.
-    function chain(g, pts, w, color, edge, ew){
+    // Membro de um ou mais segmentos (juntas que faltam são puladas): contorno, cor e um brilho fino em cima.
+    function chain(g, pts, w, color, edge, ew, glow){
       var a = [], i;
       for (i = 0; i < pts.length; i++) { if (pts[i]) a.push(pts[i]); }
       if (a.length < 2) return;
       g.lineCap = 'round'; g.lineJoin = 'round';
-      for (var pass = 0; pass < 2; pass++) {
-        g.strokeStyle = pass ? color : edge; g.lineWidth = pass ? w : w + ew;
-        g.beginPath(); g.moveTo(a[0][0], a[0][1]);
-        for (i = 1; i < a.length; i++) { g.lineTo(a[i][0], a[i][1]); }
+      for (var pass = 0; pass < (glow ? 3 : 2); pass++) {
+        var off = (pass === 2) ? -w * 0.16 : 0;
+        g.strokeStyle = pass === 0 ? edge : (pass === 1 ? color : glow); g.lineWidth = pass === 0 ? w + ew : (pass === 1 ? w : w * 0.26);
+        g.beginPath(); g.moveTo(a[0][0] + off, a[0][1] + off);
+        for (i = 1; i < a.length; i++) { g.lineTo(a[i][0] + off, a[i][1] + off); }
         g.stroke();
       }
     }
@@ -85,110 +93,188 @@ enum TVPage {
       g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.arc(x + w - r, y + r, r, -1.5708, 1.5708);
       g.lineTo(x + r, y + h); g.arc(x + r, y + r, r, 1.5708, 4.7124); g.fill();
     }
+    // Mão com dedos: palma, quatro dedos que se abrem quando o braço está levantado e o polegar do lado do corpo.
+    function hand(g, wrist, elbow, toward, size, spread, ew){
+      if (!wrist) return;
+      var ang = elbow ? Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]) : 1.5708;
+      var rel = toward ? [toward[0] - wrist[0], toward[1] - wrist[1]] : [0, 0];
+      var side = (-Math.sin(ang) * rel[0] + Math.cos(ang) * rel[1]) > 0 ? 1 : -1;
+      g.save(); g.translate(wrist[0], wrist[1]); g.rotate(ang);
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      var fan = [-0.42, -0.14, 0.14, 0.42], len = [0.62, 0.78, 0.74, 0.58], i, pass;
+      for (pass = 0; pass < 2; pass++) {
+        g.strokeStyle = pass ? SKIN : SKIN_EDGE; g.fillStyle = pass ? SKIN : SKIN_EDGE;
+        var w = size * 0.3 + (pass ? 0 : ew);
+        g.lineWidth = w;
+        for (i = 0; i < 4; i++) {
+          var a = fan[i] * (0.35 + 0.65 * spread), x0 = size * 0.7, y0 = (i - 1.5) * size * 0.3;
+          g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + Math.cos(a) * size * len[i], y0 + Math.sin(a) * size * len[i]); g.stroke();
+        }
+        var ta = side * (0.7 + 0.5 * spread);
+        g.beginPath(); g.moveTo(size * 0.35, side * size * 0.38); g.lineTo(size * 0.35 + Math.cos(ta) * size * 0.62, side * size * 0.38 + Math.sin(ta) * size * 0.62); g.stroke();
+        g.beginPath(); g.arc(size * 0.4, 0, size * 0.58 + (pass ? 0 : ew / 2), 0, 6.2832); g.fill();
+      }
+      g.restore();
+    }
+    function drawHead(g, f, J, r, hair, ew, excited){
+      var nose = J.nose, eL = J.eyeL, eR = J.eyeR, aL = J.earL, aR = J.earR, i;
+      var roll = 0, cx, cy, yaw = 0;
+      var ref = null, span = 0;
+      if (eL && eR) { roll = Math.atan2(eR[1] - eL[1], eR[0] - eL[0]); ref = mid(eL, eR); span = Math.sqrt(Math.pow(eR[0] - eL[0], 2) + Math.pow(eR[1] - eL[1], 2)) * 0.8; }
+      else if (aL && aR) { roll = Math.atan2(aR[1] - aL[1], aR[0] - aL[0]); ref = mid(aL, aR); span = Math.sqrt(Math.pow(aR[0] - aL[0], 2) + Math.pow(aR[1] - aL[1], 2)) * 0.35; }
+      roll = clamp(roll, -0.7, 0.7);
+      var cs = Math.cos(roll), sn = Math.sin(roll);
+      if (ref) { cx = ref[0] - sn * r * 0.1; cy = ref[1] + cs * r * 0.1; }
+      else { cx = nose[0]; cy = nose[1] - r * 0.06; }
+      // Virar a cabeça: o nariz sai do meio da linha dos olhos (ou das orelhas).
+      if (ref && nose && span > 0) { yaw = clamp(((nose[0] - ref[0]) * cs + (nose[1] - ref[1]) * sn) / span, -1, 1); }
+      g.save(); g.translate(cx, cy); g.rotate(roll);
+      var fx = yaw * r * 0.42, squeeze = 1 - 0.3 * Math.abs(yaw);
+      // orelhas (a que vira para trás encolhe)
+      bead(g, [-r * 0.98, r * 0.05], r * 0.2 * (1 - 0.8 * Math.max(0, -yaw)), SKIN, SKIN_EDGE, ew);
+      bead(g, [r * 0.98, r * 0.05], r * 0.2 * (1 - 0.8 * Math.max(0, yaw)), SKIN, SKIN_EDGE, ew);
+      // rosto com um brilho de luz no alto
+      dot(g, [0, 0], r + ew / 2, SKIN_EDGE);
+      var skin = g.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+      skin.addColorStop(0, '#FFEBD6'); skin.addColorStop(1, SKIN);
+      g.fillStyle = skin; g.beginPath(); g.arc(0, 0, r, 0, 6.2832); g.fill();
+      // cabelo: calota com franja, acompanha a virada
+      g.fillStyle = hair; g.beginPath();
+      g.arc(fx * 0.3, 0, r * 1.04, 3.3, 6.12);
+      g.quadraticCurveTo(fx * 0.3 + r * 0.55, -r * 0.3, fx * 0.3 + r * 0.1, -r * 0.5);
+      g.quadraticCurveTo(fx * 0.3 - r * 0.35, -r * 0.7, fx * 0.3 - r * 1.0, -r * 0.3);
+      g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = r * 0.09; g.lineCap = 'round';
+      g.beginPath(); g.arc(fx * 0.3, 0, r * 0.82, 3.7, 4.7); g.stroke();
+      // rosto: tudo desliza junto quando a cabeça vira
+      var ex = r * 0.38 * squeeze, ey = r * 0.02 - (excited ? r * 0.03 : 0);
+      dot(g, [fx - r * 0.64 * squeeze, r * 0.4], r * 0.17, 'rgba(255,110,120,0.38)');
+      dot(g, [fx + r * 0.64 * squeeze, r * 0.4], r * 0.17, 'rgba(255,110,120,0.38)');
+      if (blinking) {
+        g.strokeStyle = INK; g.lineWidth = Math.max(1.5, r * 0.08);
+        g.beginPath(); g.moveTo(fx - ex - r * 0.14, ey); g.lineTo(fx - ex + r * 0.14, ey);
+        g.moveTo(fx + ex - r * 0.14, ey); g.lineTo(fx + ex + r * 0.14, ey); g.stroke();
+      } else {
+        for (i = -1; i <= 1; i += 2) {
+          var x = fx + i * ex;
+          dot(g, [x, ey], r * 0.19, '#fff');
+          dot(g, [x + yaw * r * 0.05, ey + r * 0.02], r * 0.115, INK);
+          dot(g, [x + yaw * r * 0.05 - r * 0.035, ey - r * 0.03], r * 0.04, '#fff');
+        }
+      }
+      g.strokeStyle = INK; g.lineWidth = Math.max(1.5, r * 0.07);
+      var lift = excited ? r * 0.1 : 0;
+      for (i = -1; i <= 1; i += 2) {
+        g.beginPath(); g.moveTo(fx + i * ex - r * 0.15, ey - r * 0.3 - lift); g.quadraticCurveTo(fx + i * ex, ey - r * 0.38 - lift, fx + i * ex + r * 0.15, ey - r * 0.3 - lift); g.stroke();
+      }
+      // boca: sorriso; aberta e alegre quando os braços estão para cima
+      if (excited) {
+        g.fillStyle = INK; g.beginPath(); g.arc(fx, r * 0.3, r * 0.26, 0, 3.1416); g.closePath(); g.fill();
+        g.fillStyle = '#FF7A8A'; g.beginPath(); g.arc(fx, r * 0.5, r * 0.12, 3.1416, 6.2832); g.fill();
+      } else {
+        g.beginPath(); g.arc(fx, r * 0.2, r * 0.3, 0.4, 2.74); g.stroke();
+      }
+      g.restore();
+      return [cx, cy];
+    }
     function drawAvatar(g, f, ox, oy, bw, bh){
       function P(k){ var p = f.joints[k]; return p ? [ox + p[0] * bw, oy + p[1] * bh] : null; }
       var ls = P('ls'), rs = P('rs'), lh = P('lh'), rh = P('rh'), nose = P('n');
       var u = (ls && rs) ? Math.abs(ls[0] - rs[0]) : ((lh && rh) ? Math.abs(lh[0] - rh[0]) * 1.2 : bh * 0.08);
-      u = Math.max(bh * 0.045, Math.min(bh * 0.22, u));
-      var shirt = f.color, shirtEdge = shade(f.color, 0.45), pants = shade(f.color, 0.55), pantsEdge = shade(f.color, 0.3);
-      var hair = shade(f.color, 0.42), ew = Math.max(1.5, u * 0.09);
+      u = clamp(u, bh * 0.045, bh * 0.22);
+      var shirt = f.color, shirtEdge = shade(f.color, 0.42), pants = shade(f.color, 0.55), pantsEdge = shade(f.color, 0.3);
+      var glow = 'rgba(255,255,255,0.28)', hair = shade(f.color, 0.42), ew = Math.max(1.5, u * 0.09);
       // Sem ombros à vista, usa o nariz como referência do tronco.
       if (!(ls && rs) && nose) { ls = [nose[0] - u * 0.5, nose[1] + u * 0.9]; rs = [nose[0] + u * 0.5, nose[1] + u * 0.9]; }
-      var la = P('la'), ra = P('ra');
+      var la = P('la'), ra = P('ra'), lw = P('lw'), rw = P('rw'), le = P('le'), re = P('re');
+      var eyes = [P('ley'), P('rey')], ears = [P('lea'), P('rea')];
+      if (eyes[0] && eyes[1] && eyes[0][0] > eyes[1][0]) { eyes.reverse(); }
+      if (ears[0] && ears[1] && ears[0][0] > ears[1][0]) { ears.reverse(); }
+      var raised = (lw && ls && lw[1] < ls[1] - u * 0.2) || (rw && rs && rw[1] < rs[1] - u * 0.2);
       g.globalAlpha = f.ready ? 1 : 0.6;
 
       // sombra no chão
       var feet = mid(la, ra);
-      if (feet) { g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse ? g.ellipse(feet[0], feet[1] + u * 0.2, u * 1.1, u * 0.22, 0, 0, 6.2832) : g.arc(feet[0], feet[1] + u * 0.2, u * 0.6, 0, 6.2832); g.fill(); }
+      if (feet) {
+        g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath();
+        if (g.ellipse) { g.ellipse(feet[0], feet[1] + u * 0.2, u * 1.1, u * 0.22, 0, 0, 6.2832); } else { g.arc(feet[0], feet[1] + u * 0.2, u * 0.6, 0, 6.2832); }
+        g.fill();
+      }
 
       // pernas e tênis
-      chain(g, [lh, P('lk'), la], u * 0.52, pants, pantsEdge, ew);
-      chain(g, [rh, P('rk'), ra], u * 0.52, pants, pantsEdge, ew);
-      var feetAt = [la, ra];
-      for (var i = 0; i < 2; i++) {
+      chain(g, [lh, P('lk'), la], u * 0.52, pants, pantsEdge, ew, glow);
+      chain(g, [rh, P('rk'), ra], u * 0.52, pants, pantsEdge, ew, glow);
+      var feetAt = [la, ra], i;
+      for (i = 0; i < 2; i++) {
         var a = feetAt[i];
         if (a) {
-          // tênis: meia-lua branca com solado na cor do jogador
-          g.fillStyle = '#2B2140'; g.beginPath(); g.arc(a[0], a[1], u * 0.34 + ew / 2, 3.1416, 6.2832); g.fill();
+          g.fillStyle = INK; g.beginPath(); g.arc(a[0], a[1], u * 0.34 + ew / 2, 3.1416, 6.2832); g.fill();
           g.fillStyle = '#F4F4F8'; g.beginPath(); g.arc(a[0], a[1], u * 0.34, 3.1416, 6.2832); g.fill();
           g.fillStyle = shirt; g.fillRect(a[0] - u * 0.34, a[1] - u * 0.02, u * 0.68, u * 0.1);
         }
       }
 
-      // tronco: camisa com contorno, cantos arredondados
+      // tronco: camisa com degradê e contorno, cantos arredondados, cinto
       var hipsL = lh, hipsR = rh;
       if (ls && rs && !(lh && rh)) { hipsL = [ls[0], ls[1] + u * 1.7]; hipsR = [rs[0], rs[1] + u * 1.7]; }
       var neckBase = mid(ls, rs);
       if (nose && neckBase) { chain(g, [nose, neckBase], u * 0.42, SKIN, SKIN_EDGE, ew); }
       if (ls && rs && hipsL && hipsR) {
-        var round = u * 0.38;
+        var round = u * 0.38, top = Math.min(ls[1], rs[1]), bottom = Math.max(hipsL[1], hipsR[1]);
+        var body = g.createLinearGradient(0, top, 0, bottom);
+        body.addColorStop(0, tint(shirt, 0.28)); body.addColorStop(0.45, shirt); body.addColorStop(1, shade(shirt, 0.82));
         for (var pass = 0; pass < 2; pass++) {
-          g.fillStyle = pass ? shirt : shirtEdge; g.strokeStyle = pass ? shirt : shirtEdge;
+          g.fillStyle = pass ? body : shirtEdge; g.strokeStyle = pass ? body : shirtEdge;
           g.lineJoin = 'round'; g.lineWidth = round + (pass ? 0 : ew * 2);
           g.beginPath(); g.moveTo(ls[0], ls[1]); g.lineTo(rs[0], rs[1]); g.lineTo(hipsR[0], hipsR[1]); g.lineTo(hipsL[0], hipsL[1]); g.closePath();
           g.fill(); g.stroke();
         }
-        // faixa clara no peito e gola
-        g.strokeStyle = 'rgba(255,255,255,0.28)'; g.lineWidth = u * 0.16; g.lineCap = 'round';
-        var chest = [(ls[0] + hipsL[0]) / 2 + u * 0.05, (ls[1] + hipsL[1]) / 2];
-        g.beginPath(); g.moveTo(ls[0] + u * 0.2, ls[1] + u * 0.3); g.lineTo(chest[0] + u * 0.1, chest[1]); g.stroke();
+        // cinto com fivela
+        g.strokeStyle = INK; g.lineWidth = u * 0.13; g.lineCap = 'butt';
+        g.beginPath(); g.moveTo(hipsL[0], hipsL[1] - u * 0.06); g.lineTo(hipsR[0], hipsR[1] - u * 0.06); g.stroke();
+        var beltMid = mid(hipsL, hipsR); dot(g, [beltMid[0], beltMid[1] - u * 0.06], u * 0.1, '#FFC845');
+        // estrela no peito e gola
+        var chest = [(ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2 + u * 0.55];
+        g.fillStyle = 'rgba(255,255,255,0.8)'; g.beginPath();
+        for (i = 0; i < 10; i++) {
+          var rad = (i % 2 ? 0.1 : 0.23) * u, an = -1.5708 + i * 0.6283;
+          g.lineTo(chest[0] + Math.cos(an) * rad, chest[1] + Math.sin(an) * rad);
+        }
+        g.closePath(); g.fill();
         dot(g, neckBase, u * 0.2, SKIN);
       }
 
-      // braços: manga curta na cor da camisa, antebraço e mão de pele
-      chain(g, [ls, P('le')], u * 0.46, shirt, shirtEdge, ew);
-      chain(g, [rs, P('re')], u * 0.46, shirt, shirtEdge, ew);
-      chain(g, [P('le'), P('lw')], u * 0.36, SKIN, SKIN_EDGE, ew);
-      chain(g, [P('re'), P('rw')], u * 0.36, SKIN, SKIN_EDGE, ew);
-      bead(g, P('lw'), u * 0.24, SKIN, SKIN_EDGE, ew);
-      bead(g, P('rw'), u * 0.24, SKIN, SKIN_EDGE, ew);
+      // braços: manga curta na cor da camisa, antebraço de pele, mão com dedos
+      chain(g, [ls, le], u * 0.46, shirt, shirtEdge, ew, glow);
+      chain(g, [rs, re], u * 0.46, shirt, shirtEdge, ew, glow);
+      chain(g, [le, lw], u * 0.36, SKIN, SKIN_EDGE, ew, glow);
+      chain(g, [re, rw], u * 0.36, SKIN, SKIN_EDGE, ew, glow);
+      var bodyMid = mid(neckBase, mid(hipsL, hipsR));
+      var spreadL = (lw && ls && lw[1] < ls[1]) ? 1 : 0.25, spreadR = (rw && rs && rw[1] < rs[1]) ? 1 : 0.25;
+      hand(g, lw, le, bodyMid, u * 0.36, spreadL, ew);
+      hand(g, rw, re, bodyMid, u * 0.36, spreadR, ew);
 
-      // cabeça
+      // cabeça e plaquinha com o nome
       if (nose) {
-        var r = u * 0.74, cx = nose[0], cy = nose[1] - r * 0.06;
-        bead(g, [cx - r * 0.98, cy + r * 0.05], r * 0.2, SKIN, SKIN_EDGE, ew);
-        bead(g, [cx + r * 0.98, cy + r * 0.05], r * 0.2, SKIN, SKIN_EDGE, ew);
-        bead(g, [cx, cy], r, SKIN, SKIN_EDGE, ew);
-        // cabelo: calota com franja
-        g.fillStyle = hair; g.beginPath();
-        g.arc(cx, cy, r * 1.04, 3.3, 6.12);
-        g.quadraticCurveTo(cx + r * 0.55, cy - r * 0.3, cx + r * 0.1, cy - r * 0.5);
-        g.quadraticCurveTo(cx - r * 0.35, cy - r * 0.7, cx - r * 1.0, cy - r * 0.3);
-        g.fill();
-        // olhos, sobrancelhas, bochechas e sorriso
-        var ex = r * 0.38, ey = cy + r * 0.04;
-        g.fillStyle = 'rgba(255,110,120,0.35)';
-        dot(g, [cx - r * 0.62, cy + r * 0.38], r * 0.17, 'rgba(255,110,120,0.35)');
-        dot(g, [cx + r * 0.62, cy + r * 0.38], r * 0.17, 'rgba(255,110,120,0.35)');
-        if (blinking) {
-          g.strokeStyle = '#2B2140'; g.lineWidth = Math.max(1.5, r * 0.08); g.lineCap = 'round';
-          g.beginPath(); g.moveTo(cx - ex - r * 0.14, ey); g.lineTo(cx - ex + r * 0.14, ey);
-          g.moveTo(cx + ex - r * 0.14, ey); g.lineTo(cx + ex + r * 0.14, ey); g.stroke();
-        } else {
-          dot(g, [cx - ex, ey], r * 0.17, '#fff'); dot(g, [cx + ex, ey], r * 0.17, '#fff');
-          dot(g, [cx - ex, ey + r * 0.02], r * 0.1, '#2B2140'); dot(g, [cx + ex, ey + r * 0.02], r * 0.1, '#2B2140');
-          dot(g, [cx - ex - r * 0.03, ey - r * 0.03], r * 0.035, '#fff'); dot(g, [cx + ex - r * 0.03, ey - r * 0.03], r * 0.035, '#fff');
-        }
-        g.strokeStyle = '#2B2140'; g.lineWidth = Math.max(1.5, r * 0.09); g.lineCap = 'round';
-        g.beginPath(); g.arc(cx, cy + r * 0.2, r * 0.3, 0.4, 2.74); g.stroke();
-        // nome numa plaquinha acima da cabeça
+        var r = u * 0.74;
+        var c = drawHead(g, f, { nose: nose, eyeL: eyes[0], eyeR: eyes[1], earL: ears[0], earR: ears[1] }, r, hair, ew, raised);
         g.font = 'bold ' + Math.round(bh * 0.06) + 'px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
         var label = f.name + (f.ready ? ' ✓' : ' !'), tw = g.measureText(label).width, ph = bh * 0.085;
-        var py = Math.max(oy + ph * 0.1, cy - r * 1.15 - ph * 1.25);
-        pill(g, cx - tw / 2 - ph * 0.45, py, tw + ph * 0.9, ph, 'rgba(0,0,0,0.55)');
-        g.fillStyle = f.color; g.fillText(label, cx, py + ph / 2 + 1);
+        var py = Math.max(oy + ph * 0.1, c[1] - r * 1.15 - ph * 1.25);
+        pill(g, c[0] - tw / 2 - ph * 0.45, py, tw + ph * 0.9, ph, 'rgba(0,0,0,0.55)');
+        g.fillStyle = f.color; g.fillText(label, c[0], py + ph / 2 + 1);
         g.textBaseline = 'alphabetic';
       }
       g.globalAlpha = 1;
     }
     function stageBox(c){
-      // Resolução de verdade da tela (TVs 4K), com limite de 2x para não pesar.
-      var dpr = Math.min(2, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight, aspect = lastPose.aspect || 1.7778;
-      var pw = Math.round(W * dpr), ph = Math.round(H * dpr);
+      // Resolução maior que a da tela (mínimo 1,5x, até 2x) para as bordas ficarem lisas; `?q=1` desliga.
+      var scale = Math.min(2, Math.max(window.devicePixelRatio || 1, QUALITY)), W = c.clientWidth, H = c.clientHeight, aspect = lastPose.aspect || 1.7778;
+      var pw = Math.round(W * scale), ph = Math.round(H * scale);
       if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; }
       var bw = W, bh = W / aspect;
       if (bh > H) { bh = H; bw = H * aspect; }
-      return { W: W, H: H, dpr: dpr, ox: (W - bw) / 2, oy: (H - bh) / 2, bw: bw, bh: bh };
+      return { W: W, H: H, dpr: scale, ox: (W - bw) / 2, oy: (H - bh) / 2, bw: bw, bh: bh };
     }
     // Os avatares deslizam até a posição mais nova (em vez de saltar), o que esconde tremidas e deixa o movimento fluido.
     var shown = [], gliding = false;
@@ -238,20 +324,52 @@ enum TVPage {
       el('armL').setAttribute('transform', 'rotate(' + l + ' 70 100)');
       el('armR').setAttribute('transform', 'rotate(' + r + ' 130 100)');
     }
-    // Replay em vídeo (só com o código de acesso na URL): cobre a tela na hora do resultado.
-    function showReplay(s){
-      var v = el('replay'), src = (s.screen === 'result' && s.replay && camCode) ? (s.replay + '&t=' + camCode) : null;
-      if (src) {
-        if (v.getAttribute('data-src') !== src) {
-          v.setAttribute('data-src', src); v.src = src; v.load();
-          var p = v.play(); if (p && p.catch) p.catch(function(){});
-        }
-        v.style.display = 'block';
-      } else {
-        if (v.getAttribute('data-src')) { v.pause(); v.removeAttribute('src'); v.removeAttribute('data-src'); v.load(); }
-        v.style.display = 'none';
+    // Replay (só com o código de acesso na URL): baixa os quadros e os toca em ciclo cobrindo a tela do resultado.
+    // Só troca o layout quando todos os quadros chegaram; até lá a tela normal do resultado continua.
+    var replayKey = null, replayOn = false, replayTimer = null;
+    function stopReplay(){
+      if (replayTimer) { clearTimeout(replayTimer); replayTimer = null; }
+      replayKey = null; replayOn = false;
+    }
+    function startReplay(r){
+      var key = r.version + ':' + r.frames;
+      if (key === replayKey) return;
+      stopReplay(); replayKey = key;
+      var imgs = [], loaded = 0;
+      for (var i = 0; i < r.frames; i++) {
+        (function(i){
+          var im = new Image();
+          im.onload = im.onerror = function(){
+            loaded++;
+            if (replayKey === key && loaded === r.frames) { playReplay(imgs, r.fps, key); }
+          };
+          im.src = '/replay/' + i + '.jpg?v=' + r.version + '&t=' + camCode;
+          imgs.push(im);
+        })(i);
       }
-      return !!src;
+    }
+    function playReplay(imgs, fps, key){
+      var c = el('replay'), g = c.getContext('2d'), k = 0;
+      replayOn = true; render(lastState);
+      function tick(){
+        if (replayKey !== key) return;
+        var im = imgs[k], W = c.clientWidth || window.innerWidth, H = c.clientHeight || window.innerHeight;
+        if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+        g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
+        if (im.naturalWidth) {
+          var sc = Math.min(c.width / im.naturalWidth, c.height / im.naturalHeight), w = im.naturalWidth * sc, h = im.naturalHeight * sc;
+          g.drawImage(im, (c.width - w) / 2, (c.height - h) / 2, w, h);
+        }
+        k = (k + 1) % imgs.length;
+        replayTimer = setTimeout(tick, k === 0 ? 700 : 1000 / fps);
+      }
+      tick();
+    }
+    function showReplay(s){
+      if (s.screen === 'result' && s.replay && camCode) { startReplay(s.replay); }
+      else { stopReplay(); }
+      el('replay').style.display = replayOn ? 'block' : 'none';
+      return replayOn;
     }
     function render(s){
       lastState = s;
@@ -393,4 +511,4 @@ enum TVPage {
     </html>
     """#
 }
-// swiftlint:enable line_length type_body_length
+// swiftlint:enable line_length type_body_length file_length

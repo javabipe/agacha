@@ -21,7 +21,7 @@ public final class TVServer: @unchecked Sendable {
     private var onStreamsChanged: (@Sendable (Int) -> Void)?
     private var addedAudioOrder: [String] = []
     private var cameraToken: String?
-    private var replayVideo: Data?
+    private var replayFrames: [Data] = []
     private var cameraViewers: [ObjectIdentifier: CameraViewer] = [:]
     private static let maxAddedAudio = 40
 
@@ -58,9 +58,9 @@ public final class TVServer: @unchecked Sendable {
         }
     }
 
-    /// Guarda (ou apaga, com `nil`) o vídeo do replay servido em `/replay.mp4`. Exige o mesmo código da câmera.
-    public func setReplay(_ mp4: Data?) {
-        queue.sync { replayVideo = mp4 }
+    /// Guarda (ou apaga, com lista vazia) os quadros do replay servidos em `/replay/N.jpg`. Exige o mesmo código da câmera.
+    public func setReplayFrames(_ frames: [Data]) {
+        queue.sync { replayFrames = frames }
     }
 
     /// Manda um quadro JPEG a quem está vendo a câmera (quem ainda está recebendo o anterior pula este).
@@ -234,14 +234,14 @@ public final class TVServer: @unchecked Sendable {
             openStream(on: connection)
         case "/camera.mjpg":
             openCamera(on: connection, query: query)
-        case "/replay.mp4":
-            serveReplay(head: head, query: query, on: connection)
         case "/state":
             send(status: "200 OK", type: "application/json", body: latestState, on: connection)
         case "/clips":
             let names = audio.keys.sorted()
             let body = (try? JSONEncoder().encode(names)) ?? Data("[]".utf8)
             send(status: "200 OK", type: "application/json", body: body, on: connection)
+        case let path where path.hasPrefix("/replay/") && path.hasSuffix(".jpg"):
+            serveReplayFrame(Int(path.dropFirst("/replay/".count).dropLast(".jpg".count)), query: query, on: connection)
         case let path where path.hasPrefix("/audio/") && path.hasSuffix(".wav"):
             let name = String(path.dropFirst("/audio/".count).dropLast(".wav".count))
             if let data = audio[name] {
@@ -256,8 +256,8 @@ public final class TVServer: @unchecked Sendable {
         }
     }
 
-    private func send(status: String, type: String, body: Data, on connection: NWConnection, extra: String = "") {
-        let head = "HTTP/1.1 \(status)\r\nContent-Type: \(type)\r\nContent-Length: \(body.count)\r\n" + extra
+    private func send(status: String, type: String, body: Data, on connection: NWConnection) {
+        let head = "HTTP/1.1 \(status)\r\nContent-Type: \(type)\r\nContent-Length: \(body.count)\r\n"
             + "Cache-Control: no-store\r\nConnection: close\r\n\r\n"
         connection.send(content: Data(head.utf8) + body, completion: .contentProcessed { _ in connection.cancel() })
     }
@@ -290,44 +290,18 @@ public final class TVServer: @unchecked Sendable {
         })
     }
 
-    /// Vídeo do replay: só com o código certo, com suporte a `Range` (os navegadores de TV pedem o vídeo em pedaços).
-    private func serveReplay(head: String, query: String, on connection: NWConnection) {
+    /// Um quadro do replay: só com o código certo. Pode ficar em cache (a versão vai na URL).
+    private func serveReplayFrame(_ index: Int?, query: String, on connection: NWConnection) {
         let code = query.split(separator: "&").first { $0.hasPrefix("t=") }.map { String($0.dropFirst(2)) }
         guard let token = cameraToken, code == token else {
             send(status: "403 Forbidden", type: "text/plain", body: Data("código inválido".utf8), on: connection)
             return
         }
-        guard let video = replayVideo else {
+        guard let index, replayFrames.indices.contains(index) else {
             send(status: "404 Not Found", type: "text/plain", body: Data("sem replay".utf8), on: connection)
             return
         }
-        let total = video.count
-        guard let (start, end) = Self.byteRange(in: head, total: total) else {
-            send(status: "200 OK", type: "video/mp4", body: video, on: connection, extra: "Accept-Ranges: bytes\r\n")
-            return
-        }
-        guard start <= end, end < total else {
-            send(status: "416 Range Not Satisfiable", type: "text/plain", body: Data(), on: connection,
-                 extra: "Content-Range: bytes */\(total)\r\n")
-            return
-        }
-        send(status: "206 Partial Content", type: "video/mp4", body: video.subdata(in: start..<(end + 1)), on: connection,
-             extra: "Accept-Ranges: bytes\r\nContent-Range: bytes \(start)-\(end)/\(total)\r\n")
-    }
-
-    /// Lê `Range: bytes=a-b`, `a-` ou `-n` dos cabeçalhos. nil se não houver.
-    static func byteRange(in head: String, total: Int) -> (Int, Int)? {
-        guard let line = head.split(separator: "\r\n").first(where: { $0.lowercased().hasPrefix("range:") }),
-              let spec = line.split(separator: "=", maxSplits: 1).last else { return nil }
-        let bounds = spec.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
-            .map { Int($0.trimmingCharacters(in: .whitespaces)) }
-        guard bounds.count == 2 else { return nil }
-        switch (bounds[0], bounds[1]) {
-        case let (start?, end?): return (start, min(end, total - 1))
-        case let (start?, nil): return (start, total - 1)
-        case let (nil, suffix?): return (max(0, total - suffix), total - 1)
-        default: return nil
-        }
+        send(status: "200 OK", type: "image/jpeg", body: replayFrames[index], on: connection)
     }
 
     /// Vídeo da câmera (MJPEG): só com o código certo e com a câmera ligada no app.

@@ -2,7 +2,9 @@ import AVFoundation
 import CoreMedia
 import CoreVideo
 import Foundation
+import ImageIO
 import os
+import UniformTypeIdentifiers
 
 /// O vídeo do replay (uma composição de AVFoundation) para passar entre filas; só é lido, nunca alterado.
 public struct ReplayAsset: @unchecked Sendable {
@@ -118,27 +120,34 @@ public final class ClipRecorder: @unchecked Sendable {
         return await Self.composition(of: chosen.map(\.url))
     }
 
-    /// Junta o replay num único MP4 (sem recodificar) para a TV baixar. O arquivo fica na pasta temporária
-    /// e some junto com o resto em `resume()`/`stop()`. nil se algo falhar.
-    public func exportMP4(_ replay: ReplayAsset) async -> Data? {
+    /// Tira quadros JPEG do replay (para a TV mostrar como a câmera: imagem após imagem, sem depender de codec de vídeo).
+    /// Fica só na memória. Lista vazia se algo falhar.
+    public func exportFrames(_ replay: ReplayAsset, framesPerSecond: Double = 10, maxWidth: Double = 640) async -> [Data] {
         let asset = replay.asset
-        let url = directory.appending(path: "replay-\(UUID().uuidString).mp4")
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
-                                                 attributes: [.protectionKey: FileProtectionType.complete])
-        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else { return nil }
-        session.shouldOptimizeForNetworkUse = true
-        if #available(iOS 18.0, macOS 15.0, tvOS 18.0, *) {
-            do { try await session.export(to: url, as: .mp4) } catch { return nil }
-        } else {
-            session.outputURL = url
-            session.outputFileType = .mp4
-            await withCheckedContinuation { continuation in
-                session.exportAsynchronously { continuation.resume() }
-            }
-            guard session.status == .completed else { return nil }
+        guard let duration = try? await asset.load(.duration), duration.isValid, duration.seconds > 0 else { return [] }
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: maxWidth, height: maxWidth)
+        let tolerance = CMTime(seconds: 0.5 / framesPerSecond, preferredTimescale: 600)
+        generator.requestedTimeToleranceBefore = tolerance
+        generator.requestedTimeToleranceAfter = tolerance
+        let times = (0..<Int(duration.seconds * framesPerSecond)).map {
+            CMTime(seconds: Double($0) / framesPerSecond, preferredTimescale: 600)
         }
-        defer { try? FileManager.default.removeItem(at: url) }
-        return try? Data(contentsOf: url)
+        var frames: [(time: Double, data: Data)] = []
+        for await result in generator.images(for: times) {
+            if case let .success(requested, image, _) = result, let data = Self.jpeg(image) {
+                frames.append((requested.seconds, data))
+            }
+        }
+        return frames.sorted { $0.time < $1.time }.map(\.data)
+    }
+
+    private static func jpeg(_ image: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.6] as CFDictionary)
+        return CGImageDestinationFinalize(destination) ? data as Data : nil
     }
 
     /// Terminou o replay: apaga o que foi gravado e volta a gravar.
@@ -175,7 +184,6 @@ public final class ClipRecorder: @unchecked Sendable {
             counter += 1
             let url = directory.appending(path: "clip-\(counter).mp4")
             let newWriter = try AVAssetWriter(outputURL: url, fileType: .mp4)
-            newWriter.shouldOptimizeForNetworkUse = true
             let settings: [String: Any] = [
                 AVVideoCodecKey: AVVideoCodecType.h264,
                 AVVideoWidthKey: CVPixelBufferGetWidth(buffer),

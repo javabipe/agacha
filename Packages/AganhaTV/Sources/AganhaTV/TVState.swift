@@ -2,6 +2,18 @@ import Foundation
 
 /// O que a TV mostra agora. É só texto e cores (nada de imagem da câmera): a página da TV desenha tudo.
 public struct TVState: Codable, Equatable, Sendable {
+    public struct Replay: Codable, Equatable, Sendable {
+        public var frames: Int
+        public var version: Int
+        public var fps: Int
+
+        public init(frames: Int, version: Int, fps: Int) {
+            self.frames = frames
+            self.version = version
+            self.fps = fps
+        }
+    }
+
     fileprivate nonisolated(unsafe) static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]   // ordem estável das chaves
@@ -55,14 +67,14 @@ public struct TVState: Codable, Equatable, Sendable {
     /// Resultado ("Paulo errou!", "Arthur venceu!").
     public var message: String?
     public var players: [Player]
-    /// Endereço do vídeo do replay (`/replay.mp4?v=N`), quando pronto. A página acrescenta o código de acesso.
-    public var replay: String?
+    /// Replay pronto para a TV baixar quadro a quadro (`/replay/N.jpg?v=V`). A página acrescenta o código de acesso.
+    public var replay: Replay?
     /// Linha pequena de diagnóstico ("mediu 0,36 · precisava ≤ 0,25").
     public var note: String?
 
     public init(screen: String, word: String? = nil, background: String? = nil, gesture: String? = nil, trick: Bool = false,
                 banner: String? = nil, message: String? = nil, players: [Player] = [],
-                replay: String? = nil, note: String? = nil) {
+                replay: Replay? = nil, note: String? = nil) {
         self.screen = screen
         self.word = word
         self.background = background

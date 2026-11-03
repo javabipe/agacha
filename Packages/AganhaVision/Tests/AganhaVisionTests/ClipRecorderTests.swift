@@ -87,19 +87,15 @@ import Testing
         recorder.stop()
     }
 
-    @Test func exportsAStreamableMP4AndLeavesNoFileBehind() async throws {
+    @Test func exportsJPEGFramesAndLeavesNoFileBehind() async throws {
         let directory = tempDirectory()
         let recorder = ClipRecorder(directory: directory)
         recorder.start()
         await record(recorder, seconds: 6)
         let asset = try #require(await recorder.capture(seconds: 3))
-        let data = try #require(await recorder.exportMP4(ReplayAsset(asset)))
-        #expect(data.count > 1000)
-        #expect(String(bytes: data.subdata(in: 4..<8), encoding: .ascii) == "ftyp")
-        // "moov" antes de "mdat": o navegador da TV começa a tocar sem baixar tudo.
-        let moov = try #require(data.range(of: Data("moov".utf8))).lowerBound
-        let mdat = try #require(data.range(of: Data("mdat".utf8))).lowerBound
-        #expect(moov < mdat)
+        let frames = await recorder.exportFrames(ReplayAsset(asset), framesPerSecond: 8)
+        #expect(frames.count >= 15)
+        #expect(frames.allSatisfy { $0.count > 100 && $0.prefix(2) == Data([0xFF, 0xD8]) })
         recorder.resume()
         #expect(recorder.storedFileCount == 0)
         recorder.stop()

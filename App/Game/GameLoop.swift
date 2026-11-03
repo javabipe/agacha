@@ -284,9 +284,10 @@ final class GameLoop {
                 guard !Task.isCancelled else { return }
                 replayAsset = asset
                 replayPending = false
-                // Na TV só com o vídeo ligado (que exige o código na URL): ela baixa o mesmo replay do iPad.
-                if tv.isOn, tv.cameraOn, let asset, let data = await recorder.exportMP4(ReplayAsset(asset)), !Task.isCancelled {
-                    tv.setReplay(data)
+                // Na TV só com o vídeo ligado (que exige o código na URL): ela baixa os quadros do mesmo replay do iPad.
+                if tv.isOn, tv.cameraOn, let asset {
+                    let frames = await recorder.exportFrames(ReplayAsset(asset))
+                    if !Task.isCancelled { tv.setReplay(frames) }
                 }
             }
         }
@@ -312,7 +313,7 @@ final class GameLoop {
         replayTask?.cancel()
         replayAsset = nil
         replayPending = false
-        tv.setReplay(nil)
+        tv.setReplay([])
         recorder.resume()
     }
 
