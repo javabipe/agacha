@@ -91,7 +91,8 @@ public struct Director: Sendable, Equatable {
             : max(profile.gapFloor, profile.gapStart - profile.gapStep * (number - 1))
 
         let command = Command(number: number, word: word, gesture: gesture, isRepeat: repeats,
-                              gapMs: gap, chainsToNext: chains, windowMs: windowMs(for: number), cue: cue(for: number))
+                              gapMs: gap, chainsToNext: chains,
+                              windowMs: windowMs(for: number) + riseExtra(word: word), cue: cue(for: number))
         previous = command
         return command
     }
@@ -104,6 +105,11 @@ public struct Director: Sendable, Equatable {
     }
 
     /// Janela do comando: a tolerância escolhida, encolhendo um pouco a cada comando nos níveis mais difíceis.
+    /// Quem estava agachado (comando anterior "para baixo") e agora deve ficar em pé precisa de mais tempo.
+    private func riseExtra(word: Stance) -> Int {
+        previous?.word == .down && word == .up ? tolerance.riseExtraMs : 0
+    }
+
     private func windowMs(for number: Int) -> Int {
         let factor = max(profile.windowFloor, 1 - profile.windowShrink * Double(number - 1))
         return Int((Double(tolerance.windowMs) * factor).rounded())

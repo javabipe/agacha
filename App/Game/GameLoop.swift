@@ -1,5 +1,6 @@
 import AganhaAudio
 import AganhaCore
+import AganhaTV
 import AganhaVision
 import AVFoundation
 import CoreMedia
@@ -56,6 +57,9 @@ final class GameLoop {
     let pipeline = PosePipeline()
     let recorder = ClipRecorder()
     let tv = TVBridge()
+    var lastTVPublish = 0.0
+    var lastTVState: TVState?
+    var tvUpdatePending = false
     let audio = AudioPlayer()
     let listener = NameListener()
     var replay = ReplayBuffer()

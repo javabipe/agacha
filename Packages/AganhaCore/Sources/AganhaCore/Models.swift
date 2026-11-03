@@ -51,6 +51,15 @@ public enum Tolerance: String, Codable, Sendable, CaseIterable {
     case normal
     case rigido
 
+    /// Tempo extra (ms) quando o comando manda **levantar** de quem estava agachado: subir leva bem mais que descer.
+    public var riseExtraMs: Int {
+        switch self {
+        case .pequenos: 900
+        case .normal: 700
+        case .rigido: 500
+        }
+    }
+
     /// Duração da janela de julgamento (ms), que começa 300 ms depois do início do áudio.
     /// Precisa caber a reação (~0,4 s), levantar de um agachamento (~0,8 s) e a confirmação da postura.
     public var windowMs: Int {

@@ -7,11 +7,15 @@ public struct RemoteOutput {
     public var isActive: () -> Bool
     public var play: (String) -> Void
     public var stop: () -> Void
+    /// Toca um som gerado agora (a voz do sistema já convertida em WAV): nome e dados.
+    public var playData: ((String, Data) -> Void)?
 
-    public init(isActive: @escaping () -> Bool, play: @escaping (String) -> Void, stop: @escaping () -> Void) {
+    public init(isActive: @escaping () -> Bool, play: @escaping (String) -> Void, stop: @escaping () -> Void,
+                playData: ((String, Data) -> Void)? = nil) {
         self.isActive = isActive
         self.play = play
         self.stop = stop
+        self.playData = playData
     }
 }
 
@@ -55,7 +59,8 @@ public final class AudioPlayer: NSObject {
     public func play(_ id: String, fallbackText: String? = nil, onStart: (() -> Void)? = nil) async {
         stop()
         if let remote, remote.isActive(), let url = pickVariant(id), let clip = try? AVAudioPlayer(contentsOf: url) {
-            await runRemote(url.deletingPathExtension().lastPathComponent, duration: clip.duration, remote: remote, onStart: onStart)
+            let name = url.deletingPathExtension().lastPathComponent
+            await runRemote(duration: clip.duration, remote: remote, onStart: onStart) { remote.play(name) }
         } else if let url = pickVariant(id), let clip = try? AVAudioPlayer(contentsOf: url) {
             await run(clip, onStart: onStart)
         } else if let fallbackText {
@@ -69,6 +74,11 @@ public final class AudioPlayer: NSObject {
     /// Fala um texto com a voz do sistema (nomes, frases sem gravação).
     public func speak(_ text: String, onStart: (() -> Void)? = nil) async {
         stop()
+        if let remote, remote.isActive(), let playData = remote.playData, let clip = await renderedSpeech(text) {
+            guard !Task.isCancelled else { return }
+            await runRemote(duration: clip.duration, remote: remote, onStart: onStart) { playData(clip.name, clip.data) }
+            return
+        }
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = bestVoice()
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
@@ -124,7 +134,7 @@ public final class AudioPlayer: NSObject {
     }
 
     /// Manda o clipe para a TV e espera o tempo dele (a TV toca sozinha).
-    private func runRemote(_ name: String, duration: TimeInterval, remote: RemoteOutput, onStart: (() -> Void)?) async {
+    private func runRemote(duration: TimeInterval, remote: RemoteOutput, onStart: (() -> Void)?, start: () -> Void) async {
         let token = NSObject()
         remoteToken = token
         currentSound = ObjectIdentifier(token)
@@ -132,7 +142,7 @@ public final class AudioPlayer: NSObject {
         await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 self.continuation = continuation
-                remote.play(name)
+                start()
                 onStart?()
                 remoteTimer = Task { [weak self] in
                     try? await Task.sleep(for: .seconds(duration))
@@ -143,6 +153,89 @@ public final class AudioPlayer: NSObject {
         } onCancel: {
             Task { @MainActor in self.stop() }
         }
+    }
+
+    // MARK: - Voz do sistema como som (para a TV)
+
+    private struct RenderedSpeech {
+        let name: String
+        let data: Data
+        let duration: TimeInterval
+    }
+
+    /// Recebe os pedaços de áudio do sintetizador (em qualquer fila) e monta o WAV.
+    private final class SpeechCapture: @unchecked Sendable {
+        private let lock = NSLock()
+        private var samples: [Int16] = []
+        private var rate = 22050
+        private var finished = false
+        private var continuation: CheckedContinuation<(Data, TimeInterval)?, Never>?
+        /// O sintetizador precisa continuar vivo até terminar.
+        var synthesizer: AVSpeechSynthesizer?
+
+        func setContinuation(_ continuation: CheckedContinuation<(Data, TimeInterval)?, Never>) {
+            lock.withLock { self.continuation = continuation }
+        }
+
+        func append(_ buffer: AVAudioPCMBuffer) {
+            lock.withLock {
+                rate = Int(buffer.format.sampleRate)
+                let count = Int(buffer.frameLength)
+                if let floats = buffer.floatChannelData {
+                    samples += (0..<count).map { Int16(max(-1, min(1, floats[0][$0])) * 32767) }
+                } else if let ints = buffer.int16ChannelData {
+                    samples += (0..<count).map { ints[0][$0] }
+                }
+            }
+        }
+
+        func finish() {
+            let (continuation, result): (CheckedContinuation<(Data, TimeInterval)?, Never>?, (Data, TimeInterval)?) = lock.withLock {
+                guard !finished else { return (nil, nil) }
+                finished = true
+                defer { self.continuation = nil }
+                guard !samples.isEmpty else { return (self.continuation, nil) }
+                let pcm = samples.withUnsafeBytes { Data($0) }
+                return (self.continuation, (AudioPlayer.wav(pcm: pcm, channels: 1, rate: rate), Double(samples.count) / Double(rate)))
+            }
+            continuation?.resume(returning: result)
+        }
+    }
+
+    private nonisolated static func collector(_ capture: SpeechCapture) -> @Sendable (AVAudioBuffer) -> Void {
+        { buffer in
+            guard let pcm = buffer as? AVAudioPCMBuffer else { return }
+            if pcm.frameLength == 0 { capture.finish() } else { capture.append(pcm) }
+        }
+    }
+
+    private var speechCache: [String: RenderedSpeech] = [:]
+
+    /// Gera a fala como WAV (com cache) para a TV tocar. nil se o sintetizador não entregou áudio.
+    private func renderedSpeech(_ text: String) async -> RenderedSpeech? {
+        if let cached = speechCache[text] { return cached }
+        let capture = SpeechCapture()
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = bestVoice()
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        utterance.pitchMultiplier = 1.1
+        let result: (Data, TimeInterval)? = await withCheckedContinuation { continuation in
+            capture.setContinuation(continuation)
+            let synthesizer = AVSpeechSynthesizer()
+            capture.synthesizer = synthesizer
+            synthesizer.write(utterance, toBufferCallback: Self.collector(capture))
+            Task {
+                try? await Task.sleep(for: .seconds(8))
+                capture.finish()
+            }
+        }
+        capture.synthesizer = nil
+        guard let (data, duration) = result else { return nil }
+        let name = "tts-" + String(text.utf8.reduce(UInt64(5381)) { $0 &* 33 &+ UInt64($1) }, radix: 16)
+        let rendered = RenderedSpeech(name: name, data: data, duration: duration)
+        if speechCache.count > 60 { speechCache.removeAll() }
+        speechCache[text] = rendered
+        return rendered
     }
 
     /// Todos os clipes da voz como WAV (o navegador da TV não toca CAF). Chamar fora da thread principal.
@@ -162,7 +255,7 @@ public final class AudioPlayer: NSObject {
         return clips
     }
 
-    private nonisolated static func wav(pcm: Data, channels: Int, rate: Int) -> Data {
+    fileprivate nonisolated static func wav(pcm: Data, channels: Int, rate: Int) -> Data {
         func le32(_ value: Int) -> Data { withUnsafeBytes(of: UInt32(value).littleEndian) { Data($0) } }
         func le16(_ value: Int) -> Data { withUnsafeBytes(of: UInt16(value).littleEndian) { Data($0) } }
         var data = Data("RIFF".utf8) + le32(36 + pcm.count) + Data("WAVEfmt ".utf8) + le32(16) + le16(1) + le16(channels)

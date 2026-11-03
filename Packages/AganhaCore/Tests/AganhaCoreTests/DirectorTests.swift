@@ -118,6 +118,19 @@ import Testing
         #expect(sapeca.filter { $0.cue == nil }.count == 24)
     }
 
+    @Test func risingFromACrouchGetsExtraTime() {
+        for tolerance in Tolerance.allCases {
+            let list = commands(.tranquilo, seed: 9, count: 60, tolerance: tolerance)
+            for (previous, command) in zip(list, list.dropFirst()) {
+                let base = Int((Double(tolerance.windowMs) * max(0.85, 1 - 0.025 * Double(command.number - 1))).rounded())
+                let rises = previous.word == .down && command.word == .up
+                #expect(command.windowMs == base + (rises ? tolerance.riseExtraMs : 0), "\(tolerance) #\(command.number)")
+            }
+        }
+        let list = commands(.sapeca, seed: 2, count: 40)
+        #expect(zip(list, list.dropFirst()).contains { $0.word == .down && $1.word == .up && !$1.isRepeat })
+    }
+
     @Test func trickMeansGestureIsOppositeOfWord() {
         for command in commands(.furacao) {
             #expect(command.isTrick == (command.gesture == command.word.opposite))

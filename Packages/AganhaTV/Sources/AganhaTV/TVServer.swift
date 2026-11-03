@@ -17,6 +17,8 @@ public final class TVServer: @unchecked Sendable {
     private var audio: [String: Data] = [:]
     private var keepAlive: DispatchSourceTimer?
     private var onStreamsChanged: (@Sendable (Int) -> Void)?
+    private var addedAudioOrder: [String] = []
+    private static let maxAddedAudio = 40
 
     public init() {}
 
@@ -79,6 +81,17 @@ public final class TVServer: @unchecked Sendable {
         queue.async {
             self.latestState = json
             self.broadcast(event: "state", data: (String(bytes: json, encoding: .utf8) ?? ""))
+        }
+    }
+
+    /// Acrescenta um som gerado agora (ex.: a voz do sistema falando um nome). Guarda só os últimos.
+    public func addAudio(name: String, data: Data) {
+        queue.async {
+            if self.audio[name] == nil { self.addedAudioOrder.append(name) }
+            self.audio[name] = data
+            while self.addedAudioOrder.count > Self.maxAddedAudio {
+                self.audio.removeValue(forKey: self.addedAudioOrder.removeFirst())
+            }
         }
     }
 

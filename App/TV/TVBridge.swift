@@ -25,7 +25,11 @@ final class TVBridge {
     var audioOutput: RemoteOutput {
         RemoteOutput(isActive: { [self] in isOn && soundOnTV && connectedScreens > 0 },
                      play: { [self] name in server.playAudio(name) },
-                     stop: { [self] in server.stopAudio() })
+                     stop: { [self] in server.stopAudio() },
+                     playData: { [self] name, data in
+                         server.addAudio(name: name, data: data)
+                         server.playAudio(name)
+                     })
     }
 
     func setEnabled(_ on: Bool) async {

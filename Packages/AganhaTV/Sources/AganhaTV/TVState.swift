@@ -18,6 +18,26 @@ public struct TVState: Codable, Equatable, Sendable {
         }
     }
 
+    /// Um jogador como boneco de palito (só linhas e um ponto: nada de imagem).
+    public struct Figure: Codable, Equatable, Sendable {
+        public var name: String
+        public var color: String
+        /// Aparece inteiro no quadro (cabeça aos pés).
+        public var ready: Bool
+        /// Segmentos `[x1, y1, x2, y2]` em 0...1, origem no canto superior esquerdo.
+        public var bones: [[Double]]
+        /// Posição da cabeça `[x, y]`.
+        public var head: [Double]?
+
+        public init(name: String, color: String, ready: Bool, bones: [[Double]], head: [Double]? = nil) {
+            self.name = name
+            self.color = color
+            self.ready = ready
+            self.bones = bones
+            self.head = head
+        }
+    }
+
     /// `menu`, `positioning`, `play`, `result` ou `gameover`.
     public var screen: String
     public var word: String?
@@ -31,9 +51,13 @@ public struct TVState: Codable, Equatable, Sendable {
     /// Resultado ("Paulo errou!", "Arthur venceu!").
     public var message: String?
     public var players: [Player]
+    /// Largura ÷ altura do que a câmera vê (para desenhar os bonecos na proporção certa).
+    public var aspect: Double?
+    public var figures: [Figure]
 
     public init(screen: String, word: String? = nil, background: String? = nil, gesture: String? = nil, trick: Bool = false,
-                banner: String? = nil, message: String? = nil, players: [Player] = []) {
+                banner: String? = nil, message: String? = nil, players: [Player] = [], aspect: Double? = nil,
+                figures: [Figure] = []) {
         self.screen = screen
         self.word = word
         self.background = background
@@ -42,6 +66,8 @@ public struct TVState: Codable, Equatable, Sendable {
         self.banner = banner
         self.message = message
         self.players = players
+        self.aspect = aspect
+        self.figures = figures
     }
 
     public func json() -> Data {

@@ -50,6 +50,9 @@ struct EliminatedView: View {
                     if let text = measurement(for: slot) {
                         Text(text).font(.caption.monospacedDigit()).foregroundStyle(.white.opacity(0.8))
                     }
+                    if let text = trace(for: slot) {
+                        Text(text).font(.caption2.monospacedDigit()).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
+                    }
                 }
             }
             if info.isManual { actions }
@@ -65,6 +68,17 @@ struct EliminatedView: View {
         let measured = index.formatted(.number.precision(.fractionLength(2)))
         let needed = info.result.command.word == .up ? "≤ \(rules.standMax)" : "≥ \(rules.crouchMin)"
         return "mediu \(measured) · precisava \(needed)"
+    }
+
+    /// Índice de agachamento nos últimos instantes: "-1,2s 0,71 → -0,6s 0,48 → fim 0,31".
+    private func trace(for slot: ChildSlot) -> String? {
+        guard let points = info.result.details[slot]?.trace, points.count > 1 else { return nil }
+        return points.map { point in
+            let seconds = point.secondsBeforeEnd.formatted(.number.precision(.fractionLength(1)))
+            let time = point.secondsBeforeEnd == 0 ? "fim" : "-\(seconds)s"
+            let value = point.crouchIndex.map { $0.formatted(.number.precision(.fractionLength(2))) } ?? "–"
+            return "\(time) \(value)"
+        }.joined(separator: " → ")
     }
 
     /// Enquanto o vídeo não fica pronto (ou se estiver desligado), mostra o replay em esqueleto.

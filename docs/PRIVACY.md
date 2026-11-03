@@ -26,3 +26,4 @@
 - **Nunca envia imagem da câmera, vídeo ou áudio do microfone.** Nada sai da rede local; o servidor para ao desligar a opção ou fechar o app.
 - Na versão de teste não há código de acesso: qualquer aparelho da mesma rede que souber o endereço pode ver o estado do jogo (inclusive nomes). Antes da App Store, adicionar um código na URL.
 - O iOS pede a permissão de "Rede Local" na primeira vez (`NSLocalNetworkUsageDescription`).
+- Na tela de posicionamento, a TV recebe também **bonecos de palito**: linhas e um ponto da cabeça de cada jogador, com nome e cor. Não é imagem nem vídeo e não permite reconhecer o rosto.

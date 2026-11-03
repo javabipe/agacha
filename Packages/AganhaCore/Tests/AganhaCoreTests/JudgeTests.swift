@@ -92,4 +92,17 @@ import Testing
         #expect(result.posture == .standing)
         #expect(Judge.assess(expected: .up, samples: [], windowEnd: 1.0).verdict == .absent)
     }
+
+    @Test func traceListsTheLastMomentsOldestFirst() {
+        let samples = (0...30).map { step in
+            measured(.crouching, index: 0.8 - Double(step) * 0.025, at: 10 + Double(step) * 0.05)
+        }
+        let result = Judge.assess(expected: .up, samples: samples, windowEnd: 11.5)
+        #expect(result.trace.count >= 4)
+        #expect(result.trace.map(\.secondsBeforeEnd) == result.trace.map(\.secondsBeforeEnd).sorted(by: >))
+        #expect(result.trace.last?.secondsBeforeEnd == 0)
+        let indexes = result.trace.compactMap(\.crouchIndex)
+        #expect(indexes == indexes.sorted(by: >))   // vai levantando
+        #expect(Judge.assess(expected: .up, samples: [], windowEnd: 5).trace.isEmpty)
+    }
 }
