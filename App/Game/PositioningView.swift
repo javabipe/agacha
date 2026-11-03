@@ -135,7 +135,7 @@ struct PositioningView: View {
                 .disabled(!loop.report.allReady)
             }
             .controlSize(.large)
-            if !loop.report.allReady, loop.report.people.count >= 2 {
+            if !loop.report.allReady, loop.report.people.count >= loop.report.minPlayers {
                 Button("Começar mesmo assim") { loop.startGame(anyway: true) }
                     .font(.footnote)
                     .foregroundStyle(.white.opacity(0.8))
