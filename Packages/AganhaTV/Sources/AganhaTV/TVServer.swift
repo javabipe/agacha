@@ -85,7 +85,10 @@ public final class TVServer: @unchecked Sendable {
     public func start(port: UInt16 = 8080, audio clips: [String: Data] = [:]) async throws -> UInt16 {
         stop()
         queue.sync { audio = clips }
-        let parameters = NWParameters.tcp
+        // Sem o algoritmo de Nagle: mensagens pequenas (posição, comando, som) saem na hora, sem esperar para juntar.
+        let tcp = NWProtocolTCP.Options()
+        tcp.noDelay = true
+        let parameters = NWParameters(tls: nil, tcp: tcp)
         parameters.allowLocalEndpointReuse = true
         let endpointPort = port == 0 ? NWEndpoint.Port.any : (NWEndpoint.Port(rawValue: port) ?? .any)
         let listener = try NWListener(using: parameters, on: endpointPort)

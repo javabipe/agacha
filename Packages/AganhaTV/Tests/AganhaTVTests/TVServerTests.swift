@@ -157,6 +157,28 @@ private final class Collected: @unchecked Sendable {
     }
 }
 
+extension TVServerTests {
+    @Test func eventsReachTheTVQuicklyEvenWhenSentOftenAndSmall() async throws {
+        let (server, port) = try await start()
+        defer { server.stop() }
+        let client = RawClient(port: port)
+        try await client.connect()
+        client.send("GET /events HTTP/1.1\r\nHost: tv\r\n\r\n")
+        try await Task.sleep(for: .milliseconds(300))
+        // 100 posições pequenas em sequência, como a câmera a 30 por segundo: a última não pode ficar presa na fila.
+        for index in 0..<100 {
+            let figure = TVState.Figure(name: "P\(index)", color: "#fff", ready: true, joints: ["n": [0.5, 0.2]])
+            server.publishPose(TVPose(aspect: 1.7778, figures: [figure]))
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let started = Date()
+        let data = try await client.read(until: Data("\"name\":\"P99\"".utf8), timeout: 2)
+        #expect(data.range(of: Data("\"name\":\"P99\"".utf8)) != nil)
+        #expect(Date().timeIntervalSince(started) < 0.5)
+        client.close()
+    }
+}
+
 /// Cliente TCP simples (como o navegador da TV), para ver exatamente o que o servidor envia.
 private final class RawClient: @unchecked Sendable {
     private let connection: NWConnection

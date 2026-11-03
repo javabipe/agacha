@@ -45,11 +45,11 @@ extension GameLoop {
         }
     }
 
-    /// Posição dos jogadores para os avatares da TV (só juntas do corpo; nunca a imagem). No máximo ~10 vezes por segundo.
+    /// Posição dos jogadores para os avatares da TV (só juntas do corpo; nunca a imagem). Até ~30 vezes por segundo.
     func publishTVPose(_ analysis: FrameAnalysis) {
         guard tv.isOn, tv.connectedScreens > 0, stage != .idle, analysis.imageSize.height > 0 else { return }
         let now = Self.now()
-        guard now - lastTVPose >= 0.1 else { return }
+        guard now - lastTVPose >= 0.03 else { return }   // ~1 por quadro da câmera (30/s)
         lastTVPose = now
         func rounded(_ value: Double) -> Double { (value * 1000).rounded() / 1000 }
         let keys: [JointName: String] = [

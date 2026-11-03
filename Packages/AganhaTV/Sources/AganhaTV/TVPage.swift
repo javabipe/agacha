@@ -99,6 +99,31 @@ enum TVPage {
       if (bh > H) { bh = H; bw = H * aspect; }
       return { W: W, H: H, ox: (W - bw) / 2, oy: (H - bh) / 2, bw: bw, bh: bh };
     }
+    // Os avatares deslizam até a posição mais nova (em vez de saltar), o que esconde tremidas e deixa o movimento fluido.
+    var shown = [], gliding = false;
+    function nextFrame(f){
+      var r = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+      if (r) { r(f); } else { setTimeout(f, 16); }
+    }
+    function glide(){
+      var targets = lastPose.figures || [], moving = false, k = 0.6, next = [];
+      for (var i = 0; i < targets.length; i++) {
+        var t = targets[i], cur = null;
+        for (var j = 0; j < shown.length; j++) { if (shown[j].name === t.name && shown[j].color === t.color) { cur = shown[j]; break; } }
+        var from = cur ? cur.joints : {}, joints = {};
+        for (var key in t.joints) {
+          var to = t.joints[key], old = from[key];
+          if (!old) { joints[key] = [to[0], to[1]]; continue; }
+          var x = old[0] + (to[0] - old[0]) * k, y = old[1] + (to[1] - old[1]) * k;
+          if (Math.abs(to[0] - x) > 0.0006 || Math.abs(to[1] - y) > 0.0006) { moving = true; } else { x = to[0]; y = to[1]; }
+          joints[key] = [x, y];
+        }
+        next.push({ name: t.name, color: t.color, ready: t.ready, joints: joints });
+      }
+      shown = next;
+      drawStage();
+      if (moving) { nextFrame(glide); } else { gliding = false; }
+    }
     function drawStage(){
       var c = el('stage');
       if (!c.getContext || c.style.display === 'none') return;
@@ -112,8 +137,7 @@ enum TVPage {
         g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(b.ox, b.oy, b.bw, b.bh);
       }
       g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.strokeRect(b.ox, b.oy, b.bw, b.bh);
-      var figs = lastPose.figures || [];
-      for (var i = 0; i < figs.length; i++) { drawAvatar(g, figs[i], b.ox, b.oy, b.bw, b.bh); }
+      for (var i = 0; i < shown.length; i++) { drawAvatar(g, shown[i], b.ox, b.oy, b.bw, b.bh); }
     }
 
     // ---------- tela
@@ -150,7 +174,10 @@ enum TVPage {
       el('players').innerHTML = html;
       drawStage();
     }
-    function pose(p){ lastPose = p; drawStage(); }
+    function pose(p){
+      lastPose = p;
+      if (!gliding) { gliding = true; nextFrame(glide); }
+    }
 
     // ---------- som (Web Audio: sem o limite de elementos de áudio das TVs)
     function audioContext(){
