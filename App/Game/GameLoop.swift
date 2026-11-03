@@ -58,6 +58,11 @@ final class GameLoop {
     let camera = CameraSession()
     let pipeline = PosePipeline()
     let recorder = ClipRecorder()
+    @ObservationIgnored let shots = ShotCapturer()
+    /// Fotos reais ("shots") dos melhores momentos desta partida, na memória até a partida acabar.
+    var shotCandidates: [Data] = []
+    /// O momento da última partida, já salvo no aparelho (para compartilhar com as fotos).
+    var lastSavedMoment: Moment?
     let tv = TVBridge()
     var lastTVPublish = 0.0
     var lastTVPose = 0.0
@@ -149,6 +154,9 @@ final class GameLoop {
                                 maxErrors: settings.maxErrors, displayDelay: settings.tvDelay, solo: settings.solo,
                                 mode: settings.mode, scoreRounds: settings.scoreRounds, doubles: settings.doubles)
         if settings.recordReplay, settings.mode == .elimination { recorder.start() }
+        shotCandidates = []
+        lastSavedMoment = nil
+        shots.setArmed(settings.saveMoments)
         send(.start(config))
     }
 
@@ -210,6 +218,7 @@ final class GameLoop {
         case let .finished(result):
             recorder.stop()
             if state.config?.mode == .score { recordSoloCoins() } else { recordSoloScore() }
+            saveMoment(result)
             celebrate(result)
         }
     }
@@ -279,6 +288,7 @@ final class GameLoop {
     }
 
     private func showResult(_ result: RoundResult) {
+        captureHighlight(result)
         if state.config?.mode == .score {
             showScoreResult(result)
             return
@@ -339,6 +349,7 @@ final class GameLoop {
         replayTask?.cancel()
         replayAsset = nil
         recorder.stop()
+        shots.setArmed(false)
         closeTask?.cancel()
         resultTask?.cancel()
         promptTask?.cancel()

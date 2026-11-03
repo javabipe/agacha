@@ -1,16 +1,25 @@
 import AganhaCore
 import SwiftUI
+import UIKit
 
 /// Prévia vertical (9:16) do vídeo que seria compartilhado: avatares dançando e chorando, placar e a marca do jogo.
 /// Não mostra nenhuma imagem real das crianças: só os avatares, desenhados a partir do movimento.
 struct MomentPreview: View {
     let moment: Moment
     var showsOverlay = true
+    /// Foto real ("shot") no lugar dos avatares.
+    var photo: UIImage?
+    /// Congela os avatares num instante (para gerar a imagem do pôster).
+    var frozenAt: Double?
 
     var body: some View {
         ZStack {
             LinearGradient(colors: [Color(hex: "#3A2A6B"), Color(hex: "#1B1433")], startPoint: .top, endPoint: .bottom)
-            AvatarStage { time, aspect in figures(time: time, aspect: aspect) }
+            if let photo {
+                photoLayer(photo)
+            } else {
+                AvatarStage(figures: { time, aspect in figures(time: time, aspect: aspect) }, frozenAt: frozenAt)
+            }
             if showsOverlay {
                 VStack(spacing: 6) {
                     HStack {
@@ -33,6 +42,19 @@ struct MomentPreview: View {
         .aspectRatio(9 / 16, contentMode: .fit)
         .clipShape(.rect(cornerRadius: 22))
         .overlay { RoundedRectangle(cornerRadius: 22).stroke(.white.opacity(0.25), lineWidth: 1.5) }
+    }
+
+    /// A foto inteira no meio, com uma cópia borrada preenchendo o fundo (assim ninguém sai cortado).
+    private func photoLayer(_ photo: UIImage) -> some View {
+        ZStack {
+            Color.clear
+                .overlay { Image(uiImage: photo).resizable().scaledToFill() }
+                .clipped()
+                .blur(radius: 24)
+                .overlay { Color.black.opacity(0.35) }
+            Image(uiImage: photo).resizable().scaledToFit()
+            LinearGradient(colors: [.black.opacity(0.55), .clear, .clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+        }
     }
 
     private var scoreboard: some View {

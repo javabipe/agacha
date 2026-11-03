@@ -144,23 +144,35 @@ enum TVPage {
         g.fillStyle = pass ? fill : edge; g.beginPath(); g.arc(0, 0, 1, 0, 6.2832); g.fill(); g.restore();
       }
     }
-    // Tênis: o Vision só dá o tornozelo, então o pé é deduzido: a canela inclina o tênis, o calcanhar sobe quando
-    // o joelho dobra muito (agachado), e o pé que sobe mais que o outro aparece levantado.
+    // Tênis de lado, com a ponta para fora (como nos desenhos animados): solado branco, biqueira, calcanhar e listra na cor do
+    // jogador, cadarços e boca do cano. O Vision só dá o tornozelo, então o movimento do pé é deduzido: a canela inclina o tênis,
+    // o calcanhar sobe quando o joelho dobra (agachado) e o pé que sobe mais que o outro aparece levantado, com a ponta para baixo.
     function foot(g, ankle, knee, hip, other, side, u, color, ew){
       if (!ankle) return;
       var tilt = knee ? Math.atan2(ankle[1] - knee[1], ankle[0] - knee[0]) - 1.5708 : 0;
       var heel = 0;
       if (knee && hip) { var shin = Math.max(u * 0.2, ankle[1] - knee[1]); heel = clamp(1 - (knee[1] - hip[1]) / shin, 0, 1); }
       var lift = other ? clamp((other[1] - ankle[1]) / u, 0, 1.2) : 0;
-      var rot = side * 0.18 + tilt * 0.8 + side * lift * 0.5 + heel * side * 0.1;
-      var cx = ankle[0] + side * u * 0.1, cy = ankle[1] + u * (0.1 - heel * 0.1);
-      g.save(); g.translate(cx, cy); g.rotate(rot); g.scale(1, 1 - heel * 0.3 - lift * 0.1);
-      oval(g, 0, u * 0.12, u * 0.4, u * 0.17, 0, '#2B2140', null, 0);
-      oval(g, side * u * 0.02, u * 0.04, u * 0.38, u * 0.19, 0, '#F6F6FA', INK, ew);
-      oval(g, side * u * 0.22, u * 0.07, u * 0.17, u * 0.12, 0, color, null, 0);
-      g.strokeStyle = '#B9B9C8'; g.lineWidth = Math.max(1, u * 0.035); g.lineCap = 'round';
-      for (var i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-u * 0.12 + i * u * 0.1, -u * 0.06); g.lineTo(-u * 0.12 + i * u * 0.1 + side * u * 0.03, u * 0.03); g.stroke(); }
-      oval(g, -side * u * 0.12, -u * 0.07, u * 0.12, u * 0.06, 0, '#4B4166', null, 0);
+      var rot = tilt * 0.6 + side * (lift * 0.6 + heel * 0.35);
+      g.save(); g.translate(ankle[0], ankle[1] + u * 0.1 - heel * u * 0.1); g.rotate(rot); g.scale(side * u, u);
+      g.lineJoin = 'round'; g.lineCap = 'round';
+      var lw = ew / u;
+      function body(){
+        g.beginPath(); g.moveTo(-0.30, 0.22); g.lineTo(0.52, 0.22); g.quadraticCurveTo(0.63, 0.22, 0.60, 0.10);
+        g.quadraticCurveTo(0.58, -0.01, 0.46, -0.03); g.quadraticCurveTo(0.28, -0.05, 0.14, -0.14); g.lineTo(0.10, -0.27);
+        g.lineTo(-0.20, -0.27); g.quadraticCurveTo(-0.35, -0.22, -0.32, 0.02); g.closePath();
+      }
+      body(); g.fillStyle = '#F6F6FA'; g.fill();
+      g.save(); body(); g.clip();
+      g.fillStyle = color; g.fillRect(0.38, -0.1, 0.3, 0.4); g.fillRect(-0.4, -0.3, 0.14, 0.6);
+      g.strokeStyle = color; g.lineWidth = 0.05; g.beginPath(); g.moveTo(-0.2, 0.06); g.quadraticCurveTo(0.1, 0.0, 0.32, 0.08); g.stroke();
+      g.fillStyle = '#FFFFFF'; g.fillRect(-0.4, 0.12, 1.1, 0.12);
+      g.restore();
+      g.strokeStyle = INK; g.lineWidth = lw; body(); g.stroke();
+      g.beginPath(); g.moveTo(-0.31, 0.12); g.lineTo(0.58, 0.12); g.lineWidth = lw * 0.6; g.stroke();
+      g.lineWidth = lw * 0.7;
+      for (var i = 0; i < 3; i++) { g.beginPath(); g.moveTo(0.1 + i * 0.11, -0.1 + i * 0.015); g.lineTo(0.2 + i * 0.11, -0.2 + i * 0.045 + 0.04); g.strokeStyle = '#8F8FA8'; g.stroke(); }
+      g.fillStyle = '#3A3050'; g.beginPath(); g.moveTo(-0.2, -0.27); g.quadraticCurveTo(-0.05, -0.2, 0.1, -0.27); g.quadraticCurveTo(-0.05, -0.33, -0.2, -0.27); g.fill();
       g.restore();
     }
     function drawHead(g, f, J, r, hair, ew, excited){

@@ -1,3 +1,4 @@
+import AganhaSocial
 import SwiftUI
 import UIKit
 
@@ -17,6 +18,9 @@ struct ShareClipView: View {
     @State private var pending: SocialNetwork?
     @State private var stage = Stage.choosing
     @State private var systemSheet = false
+    @State private var shareItems: [Any] = []
+    @State private var confirmReal = false
+    @State private var shotIndex = 0
 
     var body: some View {
         ZStack {
@@ -25,7 +29,7 @@ struct ShareClipView: View {
                 VStack(spacing: 20) {
                     header
                     HStack(alignment: .top, spacing: 20) {
-                        MomentPreview(moment: moment).frame(maxWidth: 230)
+                        MomentPreview(moment: moment, photo: photo).frame(maxWidth: 230)
                         VStack(alignment: .leading, spacing: 14) { options; destinations }
                     }
                     statusArea
@@ -43,7 +47,37 @@ struct ShareClipView: View {
         .sheet(item: $pending) { network in
             ParentalGateView(onPass: { pending = nil; send(to: network) }, onCancel: { pending = nil })
         }
-        .sheet(isPresented: $systemSheet) { ActivityView(items: [caption]) }
+        .sheet(isPresented: $systemSheet) { ActivityView(items: shareItems) }
+        .alert("Mostrar as crianças de verdade?", isPresented: $confirmReal) {
+            Button("Sim, tenho autorização") { showRealKids = true }
+            Button("Não", role: .cancel) {}
+        } message: {
+            Text("A foto real mostra o rosto de quem jogou. Só compartilhe com a autorização dos responsáveis de cada criança.")
+        }
+    }
+
+    private var photo: UIImage? {
+        guard showRealKids, moment.shotURLs.indices.contains(shotIndex) else { return nil }
+        return UIImage(contentsOfFile: moment.shotURLs[shotIndex].path)
+    }
+
+    private var realCaption: String {
+        if moment.shotURLs.isEmpty {
+            return moment.isSample ? String(localized: "Os exemplos não têm foto real.")
+                : String(localized: "Não há foto real guardada deste momento.")
+        }
+        return showRealKids ? String(localized: "Mostra o rosto de quem jogou: só com a autorização dos responsáveis.")
+            : String(localized: "Desligado: o vídeo mostra só os avatares (sem rostos reais).")
+    }
+
+    /// Imagem final do momento (avatares ou foto real, com placar e marca), pronta para o share sheet.
+    private func exportImage() -> URL? {
+        let view = MomentPreview(moment: moment, photo: photo, frozenAt: 0.25).frame(width: 360, height: 640)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 3
+        guard let data = renderer.uiImage?.pngData() else { return nil }
+        let url = FileManager.default.temporaryDirectory.appending(path: "Aganha-\(moment.id.uuidString.prefix(8)).png")
+        return (try? data.write(to: url)) != nil ? url : nil
     }
 
     static func suggestedCaption(for moment: Moment) -> String {
@@ -69,14 +103,16 @@ struct ShareClipView: View {
                 .lineLimit(3...5)
                 .textFieldStyle(.roundedBorder)
                 .foregroundStyle(.black)
-            Toggle(isOn: $showRealKids) {
+            Toggle(isOn: Binding(get: { showRealKids }, set: { if $0 { confirmReal = true } else { showRealKids = false } })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Mostrar as crianças de verdade").font(.headline)
-                    Text(showRealKids ? "Precisa da autorização dos responsáveis de cada criança que aparece."
-                         : "Desligado: o vídeo mostra só os avatares (sem rostos reais).")
-                        .font(.caption)
-                        .foregroundStyle(showRealKids ? Color(hex: "#FFC845") : Color.aganhaCream.opacity(0.7))
+                    Text(realCaption).font(.caption).foregroundStyle(showRealKids ? Color(hex: "#FFC845") : Color.aganhaCream.opacity(0.7))
                 }
+            }
+            .disabled(moment.shotURLs.isEmpty)
+            if showRealKids, moment.shotURLs.count > 1 {
+                Button("Trocar foto (\(shotIndex + 1)/\(moment.shotURLs.count))") { shotIndex = (shotIndex + 1) % moment.shotURLs.count }
+                    .buttonStyle(.bordered)
             }
         }
     }
@@ -122,13 +158,22 @@ struct ShareClipView: View {
     }
 
     private func send(to network: SocialNetwork) {
-        if network == .more { systemSheet = true; return }
+        if network == .more {
+            shareItems = [caption] + (exportImage().map { [$0] } ?? [])
+            systemSheet = true
+            return
+        }
         Task {
             let steps = [String(localized: "Montando o vídeo vertical 9:16…"), String(localized: "Colocando o placar e a marca do jogo…"),
                          String(localized: "Abrindo \(network.title)…")]
             for (index, step) in steps.enumerated() {
                 stage = .sending(network, progress: Double(index) / Double(steps.count), step: step)
                 try? await Task.sleep(for: .milliseconds(700))
+            }
+            // A integração de verdade (SDK ou esquema de URL) já está ligada aqui, mas desligada: responde "simulação".
+            if let url = exportImage() {
+                let item = ShareItem(fileURL: url, kind: .image, caption: caption)
+                _ = await SocialShareCenter.shared.share(item, to: network.platform)
             }
             stage = .done(network)
         }

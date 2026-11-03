@@ -28,7 +28,21 @@ Estado: **simulação** com dados de exemplo (telas "Momentos" e "Compartilhar m
 3. **SDKs diretos (opcional):** TikTok Share Kit e Reels, com contas de desenvolvedor e revisão das plataformas.
 4. **Feed de verdade ("Momentos" público):** exige servidor, moderação e consentimento dos pais; provavelmente incompatível com a categoria Kids. Decidir com cuidado (alternativa: link privado para a família).
 
+## Decisões do Paulo (2026-11-16)
+- **Vídeo/imagem de avatares é o padrão**; a **foto real** dos jogadores é uma opção (com aviso de autorização dos responsáveis).
+- **Momentos já salva** (só no aparelho, fora do backup, com apagar um/todos e interruptor nos Ajustes): o pôster de avatares e até 4 fotos reais ("shots": uma do fim da partida e até 3 de destaques — acerto PERFEITO no modo pontuação, erro na eliminação). Ainda não há vídeo: o pôster e as fotos são imagens.
+- **SDKs instalados, mas desligados** (`SocialConfig.isLive == false`): pacote `Packages/AganhaSocial` — TikTok Share Kit (SDK oficial), Instagram Reels (esquema de URL da Meta; não existe SDK a instalar), WhatsApp (sem SDK), YouTube (sem SDK; API de dados com login Google, a fazer). Nada é enviado enquanto não houver chaves e o interruptor. Chaves: `TIKTOK_CLIENT_KEY` em `Config/Base.xcconfig`/`Local.xcconfig`, ID do app Meta e ID OAuth do Google em `SocialConfig`.
+- **Atenção Kids:** SDK de terceiro dentro de app da categoria Kids pode reprovar na App Store (a regra proíbe enviar dados a terceiros). Por isso tudo de terceiros está num pacote só, que dá para **retirar** de uma versão Kids.
+
+## Feed público × links privados da família × categoria Kids
+**Feed público** (como TikTok/Instagram dentro do app): exige servidor para guardar e entregar vídeos, contas de usuário, moderação (denúncias, remoção rápida, filtro de conteúdo impróprio, comentários), e consentimento verificável dos pais para vídeos de crianças (COPPA). É o tipo de recurso aberto que a categoria Kids praticamente não admite. Custo e risco altos.
+
+**Links privados da família:** cada momento vira um link com endereço impossível de adivinhar (e que expira), criado só por um adulto e enviado por WhatsApp/Mensagens. Sem conta, sem busca, sem comentários, sem perfil de criança. Quem recebe só assiste. Precisa de um armazenamento mínimo (CloudKit da Apple, que é da própria Apple, ou um servidor nosso) e de um botão "apagar o link". Mantém o efeito de compartilhar sem virar rede social.
+
+**Categoria Kids — vantagens:** confiança dos pais (selo e seção própria na App Store), aparece na navegação por idade (5 e menos, 6–8, 9–11), combina com o produto, protege a marca; **desvantagens:** sem anúncios/analytics de terceiros e sem enviar dados a terceiros, links para fora e compras só atrás de portão para adultos, quase nenhum recurso social aberto, revisão mais rígida, monetização limitada (compra única ou assinatura/compras com portão). Sair da Kids libera SDKs e feed, mas **não** tira o app das regras de privacidade infantil: se o jogo é voltado a crianças, a COPPA continua valendo (não é parecer jurídico — vale consultar um advogado antes de publicar).
+
+**Caminho sugerido:** (1) Kids + avatares + folha de compartilhar do iOS (sem SDK); (2) link privado da família via CloudKit; (3) só se o crescimento exigir: uma versão "família" fora da Kids, com SDKs e feed moderado.
+
 ## Perguntas em aberto
-- Vídeo só de avatares como padrão (recomendado)? A câmera real entra nesta versão?
-- Quais redes primeiro: só share sheet ou também SDK de TikTok/Instagram?
-- O app continua na categoria Kids (limita muito o social) ou passa a "família/uso geral"?
+- Seguimos com o plano acima ou queremos a versão fora da Kids com SDKs desde já?
+- Vídeo de avatares (animado) é o próximo passo? (hoje só pôster)

@@ -43,7 +43,7 @@ struct HomeView: View {
             SettingsView(loop: loop, onDiagnostic: { showSettings = false; onDiagnostic() }, onClose: { showSettings = false })
         }
         .sheet(isPresented: $showTV) { TVHelpView(monitor: mirroring, tv: loop.tv) }
-        .fullScreenCover(isPresented: $showMoments) { MomentsView(onClose: { showMoments = false }) }
+        .fullScreenCover(isPresented: $showMoments) { MomentsView(loop: loop, onClose: { showMoments = false }) }
         .onAppear { pulse = true }
     }
 

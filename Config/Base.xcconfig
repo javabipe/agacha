@@ -1,3 +1,6 @@
 // Configuração comum. Valores locais (não versionados) ficam em Local.xcconfig.
 // Crie Config/Local.xcconfig a partir de Local.xcconfig.example e preencha o Team ID.
 #include? "Local.xcconfig"
+
+// Chaves das redes sociais (vazias = integração desligada). Ver docs/SOCIAL.md.
+TIKTOK_CLIENT_KEY =

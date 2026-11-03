@@ -8,6 +8,7 @@ struct SettingsView: View {
     let onClose: () -> Void
     @State private var mirroring = MirroringMonitor()
     @State private var showTV = false
+    @State private var confirmDeleteMoments = false
 
     var body: some View {
         ZStack {
@@ -59,6 +60,11 @@ struct SettingsView: View {
                                 .font(.headline)
                                 .foregroundStyle(Color.aganhaCream)
                         }
+                        Toggle("Guardar momentos (avatares e fotos reais) neste aparelho", isOn: $loop.settings.saveMoments)
+                            .font(.headline)
+                            .foregroundStyle(Color.aganhaCream)
+                        Button("Apagar todos os momentos salvos", role: .destructive) { confirmDeleteMoments = true }
+                            .foregroundStyle(Color(hex: "#FF8A80"))
                         if loop.settings.mode == .elimination {
                             Toggle("Replay em vídeo do erro (apagado em seguida)", isOn: $loop.settings.recordReplay)
                                 .font(.headline)
@@ -83,6 +89,12 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $showTV) { TVHelpView(monitor: mirroring, tv: loop.tv) }
+        .confirmationDialog("Apagar todos os momentos?", isPresented: $confirmDeleteMoments, titleVisibility: .visible) {
+            Button("Apagar tudo", role: .destructive) { MomentStore.shared.deleteAll() }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Os pôsteres e as fotos reais salvos neste aparelho serão apagados.")
+        }
     }
 
     /// Mostrar o jogo no navegador da TV (rede Wi-Fi), com ou sem o som.

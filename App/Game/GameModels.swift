@@ -11,6 +11,8 @@ struct GameSettings: Equatable, Codable {
     var askNames = true
     /// Quem aparece apresentando o jogo (a voz gravada ainda é só a da tia).
     var host: HostStyle = .tia
+    /// Guardar, só neste aparelho, o pôster de avatares e fotos reais ("shots") de cada partida na tela Momentos.
+    var saveMoments = true
     /// Treino com um único jogador.
     var solo = false
     /// Eliminação (padrão) ou pontuação por rapidez, e quantas rodadas tem a partida de pontuação.

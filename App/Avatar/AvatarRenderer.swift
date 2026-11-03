@@ -99,42 +99,62 @@ struct AvatarRenderer {
         }
     }
 
-    /// Tênis deduzido do tornozelo: inclina com a canela, o calcanhar sobe ao agachar e o pé mais alto aparece levantado.
+    /// Tênis de lado, com a ponta para fora, deduzido do tornozelo: a canela inclina o tênis, o calcanhar sobe ao agachar
+    /// e o pé mais alto aparece levantado (ponta para baixo). Solado branco, biqueira/calcanhar/listra na cor do jogador.
     private func drawShoe(in ctx: inout GraphicsContext, _ leg: Leg, side: CGFloat, _ m: Metrics) {
         guard let ankle = leg.ankle else { return }
-        let (unit, edge, knee, hip, other) = (m.unit, m.edge, leg.knee, leg.hip, leg.other)
+        let unit = m.unit
         var tilt = 0.0
         var heel = 0.0
-        if let knee {
+        if let knee = leg.knee {
             tilt = Double(atan2(ankle.y - knee.y, ankle.x - knee.x)) - .pi / 2
-            if let hip {
+            if let hip = leg.hip {
                 let shin = max(unit * 0.2, ankle.y - knee.y)
                 heel = min(max(1 - Double((knee.y - hip.y) / shin), 0), 1)
             }
         }
-        let lift = other.map { min(max(Double(($0.y - ankle.y) / unit), 0), 1.2) } ?? 0
-        let rotation = Double(side) * 0.18 + tilt * 0.8 + Double(side) * lift * 0.5 + heel * Double(side) * 0.1
+        let lift = leg.other.map { min(max(Double(($0.y - ankle.y) / unit), 0), 1.2) } ?? 0
         var c = ctx
-        c.translateBy(x: ankle.x + side * unit * 0.1, y: ankle.y + unit * (0.1 - heel * 0.1))
-        c.rotate(by: .radians(rotation))
-        c.scaleBy(x: 1, y: 1 - heel * 0.3 - lift * 0.1)
-        func oval(_ x: CGFloat, _ y: CGFloat, _ rx: CGFloat, _ ry: CGFloat, _ fill: Color, outline: Bool = false) {
-            let growth = outline ? edge / 2 : 0
-            let rect = CGRect(x: x - rx - growth, y: y - ry - growth, width: (rx + growth) * 2, height: (ry + growth) * 2)
-            c.fill(Path(ellipseIn: rect), with: .color(fill))
-        }
-        oval(0, unit * 0.12, unit * 0.4, unit * 0.17, AvatarPalette.ink)
-        oval(side * unit * 0.02, unit * 0.04, unit * 0.38, unit * 0.19, AvatarPalette.ink, outline: true)
-        oval(side * unit * 0.02, unit * 0.04, unit * 0.38, unit * 0.19, Color(hex: "#F6F6FA"))
-        oval(side * unit * 0.22, unit * 0.07, unit * 0.17, unit * 0.12, palette.base)
+        c.translateBy(x: ankle.x, y: ankle.y + unit * (0.1 - heel * 0.1))
+        c.rotate(by: .radians(tilt * 0.6 + Double(side) * (lift * 0.6 + heel * 0.35)))
+        c.scaleBy(x: side * unit, y: unit)
+        let line = m.edge / unit
+        var body = Path()
+        body.move(to: CGPoint(x: -0.30, y: 0.22))
+        body.addLine(to: CGPoint(x: 0.52, y: 0.22))
+        body.addQuadCurve(to: CGPoint(x: 0.60, y: 0.10), control: CGPoint(x: 0.63, y: 0.22))
+        body.addQuadCurve(to: CGPoint(x: 0.46, y: -0.03), control: CGPoint(x: 0.58, y: -0.01))
+        body.addQuadCurve(to: CGPoint(x: 0.14, y: -0.14), control: CGPoint(x: 0.28, y: -0.05))
+        body.addLine(to: CGPoint(x: 0.10, y: -0.27))
+        body.addLine(to: CGPoint(x: -0.20, y: -0.27))
+        body.addQuadCurve(to: CGPoint(x: -0.32, y: 0.02), control: CGPoint(x: -0.35, y: -0.22))
+        body.closeSubpath()
+        c.fill(body, with: .color(Color(hex: "#F6F6FA")))
+        var painted = c
+        painted.clip(to: body)
+        painted.fill(Path(CGRect(x: 0.38, y: -0.1, width: 0.3, height: 0.4)), with: .color(palette.base))
+        painted.fill(Path(CGRect(x: -0.4, y: -0.3, width: 0.14, height: 0.6)), with: .color(palette.base))
+        var stripe = Path()
+        stripe.move(to: CGPoint(x: -0.2, y: 0.06))
+        stripe.addQuadCurve(to: CGPoint(x: 0.32, y: 0.08), control: CGPoint(x: 0.1, y: 0))
+        painted.stroke(stripe, with: .color(palette.base), lineWidth: 0.05)
+        painted.fill(Path(CGRect(x: -0.4, y: 0.12, width: 1.1, height: 0.12)), with: .color(.white))
+        c.stroke(body, with: .color(AvatarPalette.ink), style: StrokeStyle(lineWidth: line, lineJoin: .round))
+        var sole = Path()
+        sole.move(to: CGPoint(x: -0.31, y: 0.12))
+        sole.addLine(to: CGPoint(x: 0.58, y: 0.12))
+        c.stroke(sole, with: .color(AvatarPalette.ink), lineWidth: line * 0.6)
         for index in 0..<3 {
             var lace = Path()
-            let x = -unit * 0.12 + CGFloat(index) * unit * 0.1
-            lace.move(to: CGPoint(x: x, y: -unit * 0.06))
-            lace.addLine(to: CGPoint(x: x + side * unit * 0.03, y: unit * 0.03))
-            c.stroke(lace, with: .color(Color(hex: "#B9B9C8")), style: StrokeStyle(lineWidth: max(1, unit * 0.035), lineCap: .round))
+            lace.move(to: CGPoint(x: 0.1 + Double(index) * 0.11, y: -0.1 + Double(index) * 0.015))
+            lace.addLine(to: CGPoint(x: 0.2 + Double(index) * 0.11, y: -0.16 + Double(index) * 0.045))
+            c.stroke(lace, with: .color(Color(hex: "#8F8FA8")), style: StrokeStyle(lineWidth: line * 0.7, lineCap: .round))
         }
-        oval(-side * unit * 0.12, -unit * 0.07, unit * 0.12, unit * 0.06, Color(hex: "#4B4166"))
+        var collar = Path()
+        collar.move(to: CGPoint(x: -0.2, y: -0.27))
+        collar.addQuadCurve(to: CGPoint(x: 0.1, y: -0.27), control: CGPoint(x: -0.05, y: -0.2))
+        collar.addQuadCurve(to: CGPoint(x: -0.2, y: -0.27), control: CGPoint(x: -0.05, y: -0.33))
+        c.fill(collar, with: .color(Color(hex: "#3A3050")))
     }
 
     /// Tronco com degradê e cantos arredondados, cinto, estrela no peito. Devolve o meio dos quadris (real ou deduzido).

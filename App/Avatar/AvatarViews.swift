@@ -6,18 +6,29 @@ struct AvatarStage: View {
     /// Monta os bonecos para o instante `time` (s) numa caixa com a proporção `aspect` (largura/altura).
     let figures: (_ time: Double, _ aspect: Double) -> [AvatarFigure]
     var animated = true
+    /// Congela num instante (para gerar uma imagem do momento).
+    var frozenAt: Double?
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: !animated)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
-            Canvas { ctx, size in
-                let box = CGRect(origin: .zero, size: size)
-                for figure in figures(time, Double(size.width / max(1, size.height))) {
-                    AvatarRenderer(figure: figure, box: box, time: time).draw(in: &ctx)
+        Group {
+            if let frozenAt {
+                canvas(time: frozenAt)
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 30, paused: !animated)) { timeline in
+                    canvas(time: timeline.date.timeIntervalSinceReferenceDate)
                 }
             }
         }
         .accessibilityHidden(true)
+    }
+
+    private func canvas(time: Double) -> some View {
+        Canvas { ctx, size in
+            let box = CGRect(origin: .zero, size: size)
+            for figure in figures(time, Double(size.width / max(1, size.height))) {
+                AvatarRenderer(figure: figure, box: box, time: time).draw(in: &ctx)
+            }
+        }
     }
 }
 

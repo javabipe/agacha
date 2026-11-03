@@ -1,3 +1,4 @@
+import AganhaSocial
 import SwiftUI
 
 /// Destinos de compartilhamento. `integration` resume como cada um será ligado de verdade (ver docs/SOCIAL.md).
@@ -5,6 +6,17 @@ enum SocialNetwork: String, CaseIterable, Identifiable {
     case tiktok, instagram, youtube, whatsapp, photos, more
 
     var id: String { rawValue }
+
+    var platform: SocialPlatform {
+        switch self {
+        case .tiktok: .tiktok
+        case .instagram: .instagram
+        case .youtube: .youtube
+        case .whatsapp: .whatsapp
+        case .photos: .photos
+        case .more: .system
+        }
+    }
 
     var title: String {
         switch self {

@@ -2,16 +2,16 @@ import AganhaCore
 import Foundation
 
 /// Um "momento" para compartilhar: o resultado de uma partida (hoje com dados de exemplo; depois, o clipe de verdade).
-struct Moment: Identifiable {
-    struct Player: Identifiable {
-        let id = UUID()
+struct Moment: Identifiable, Sendable {
+    struct Player: Identifiable, Sendable {
+        var id: String { name }
         let name: String
         let colorHex: String
         let coins: Int
         let isWinner: Bool
     }
 
-    let id = UUID()
+    let id: UUID
     let title: String
     let place: String
     let ago: String
@@ -24,6 +24,24 @@ struct Moment: Identifiable {
     let players: [Player]
     /// Dados de exemplo (não é uma partida de verdade).
     var isSample = true
+    /// Momento salvo: pôster de avatares e fotos reais ("shots") guardados no aparelho.
+    var posterURL: URL?
+    var shotURLs: [URL] = []
+
+    init(id: UUID = UUID(), title: String, place: String, ago: String, durationSeconds: Int, views: Int, likes: Int,
+         mode: GameMode, rounds: Int, fastestMs: Int?, players: [Player]) {
+        self.id = id
+        self.title = title
+        self.place = place
+        self.ago = ago
+        self.durationSeconds = durationSeconds
+        self.views = views
+        self.likes = likes
+        self.mode = mode
+        self.rounds = rounds
+        self.fastestMs = fastestMs
+        self.players = players
+    }
 
     var durationText: String { String(format: "%d:%02d", durationSeconds / 60, durationSeconds % 60) }
     var winners: [Player] { players.filter(\.isWinner) }
