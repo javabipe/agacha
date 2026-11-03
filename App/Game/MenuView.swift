@@ -6,6 +6,7 @@ struct MenuView: View {
     let onPlay: () -> Void
     let onDiagnostic: () -> Void
     @State private var mirroring = MirroringMonitor()
+    @State private var showTV = false
 
     var body: some View {
         ZStack {
@@ -48,12 +49,8 @@ struct MenuView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(Color(hex: "#36C9A6"))
 
-                    HStack(spacing: 8) {
-                        AirPlayButton().frame(width: 36, height: 36)
-                        Text(mirroring.isMirroring ? "Tela na TV" : "Enviar a tela para a TV")
-                            .font(.callout)
-                            .foregroundStyle(Color.aganhaCream.opacity(mirroring.isMirroring ? 1 : 0.8))
-                    }
+                    Button(mirroring.isMirroring ? "Ver na TV (conectada)" : "Ver na TV", systemImage: "tv") { showTV = true }
+                        .foregroundStyle(Color.aganhaCream.opacity(mirroring.isMirroring ? 1 : 0.9))
 
                     Button("Diagnóstico da câmera", action: onDiagnostic)
                         .foregroundStyle(Color.aganhaCream.opacity(0.7))
@@ -63,6 +60,7 @@ struct MenuView: View {
                 .frame(maxWidth: .infinity)
             }
         }
+        .sheet(isPresented: $showTV) { TVHelpView(monitor: mirroring) }
     }
 
     private func picker<Value: Hashable>(_ title: LocalizedStringKey, selection: Binding<Value>, options: [Value],

@@ -51,22 +51,13 @@ public enum Tolerance: String, Codable, Sendable, CaseIterable {
     case normal
     case rigido
 
-    /// Quão completo o movimento precisa ser: quem tem mais tolerância pode ficar um pouco mais "torto".
-    public var rules: JudgeRules {
-        switch self {
-        case .pequenos: JudgeRules(standMax: 0.35, crouchMin: 0.40)
-        case .normal: JudgeRules(standMax: 0.30, crouchMin: 0.45)
-        case .rigido: JudgeRules(standMax: 0.25, crouchMin: 0.50)
-        }
-    }
-
     /// Duração da janela de julgamento (ms), que começa 300 ms depois do início do áudio.
     /// Precisa caber a reação (~0,4 s), levantar de um agachamento (~0,8 s) e a confirmação da postura.
     public var windowMs: Int {
         switch self {
-        case .pequenos: 2400
-        case .normal: 1800
-        case .rigido: 1200
+        case .pequenos: 2800
+        case .normal: 2200
+        case .rigido: 1500
         }
     }
 }

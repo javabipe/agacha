@@ -37,8 +37,8 @@ import Testing
         #expect(list[0].gapMs == 2200)
         #expect(list[1].gapMs == 2140)
         #expect(list.last?.gapMs == 1200)
-        #expect(list[0].windowMs == 1800)
-        #expect(list.last?.windowMs == 1350)   // 0,75 do normal
+        #expect(list[0].windowMs == 2200)
+        #expect(list.last?.windowMs == 1870)   // 0,85 do normal
     }
 
     @Test func sapecaTricksStartAtSecondAndNeverBackToBack() {
@@ -102,10 +102,10 @@ import Testing
     }
 
     @Test func windowShrinksOnEveryLevelDownToAFloor() {
-        #expect(commands(.sapeca, count: 30)[0].windowMs == 1800)
-        #expect(commands(.sapeca, count: 30).last?.windowMs == 1170)    // 0,65 do normal
-        #expect(commands(.furacao, count: 30)[0].windowMs == 1800)
-        #expect(commands(.furacao, count: 30).last?.windowMs == 990)    // 0,55 do normal
+        #expect(commands(.sapeca, count: 30)[0].windowMs == 2200)
+        #expect(commands(.sapeca, count: 30).last?.windowMs == 1650)    // 0,75 do normal
+        #expect(commands(.furacao, count: 30)[0].windowMs == 2200)
+        #expect(commands(.furacao, count: 30).last?.windowMs == 1430)   // 0,65 do normal
     }
 
     @Test func cuesAnnounceHigherPaceEveryFiveCommands() {
@@ -125,8 +125,8 @@ import Testing
     }
 
     @Test func windowFollowsTolerance() {
-        #expect(commands(.tranquilo, count: 1, tolerance: .pequenos).allSatisfy { $0.windowMs == 2400 })
-        #expect(commands(.tranquilo, count: 1, tolerance: .normal).allSatisfy { $0.windowMs == 1800 })
-        #expect(commands(.tranquilo, count: 1, tolerance: .rigido).allSatisfy { $0.windowMs == 1200 })
+        #expect(commands(.tranquilo, count: 1, tolerance: .pequenos).allSatisfy { $0.windowMs == 2800 })
+        #expect(commands(.tranquilo, count: 1, tolerance: .normal).allSatisfy { $0.windowMs == 2200 })
+        #expect(commands(.tranquilo, count: 1, tolerance: .rigido).allSatisfy { $0.windowMs == 1500 })
     }
 }

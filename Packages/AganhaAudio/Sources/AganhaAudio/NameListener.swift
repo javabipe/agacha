@@ -99,7 +99,7 @@ public final class NameListener {
         guard let recognizer, recognizer.isAvailable else { throw Unavailable.recognizerUnavailable }
 
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowAirPlay, .allowBluetoothA2DP])
         try session.setActive(true)
         defer { try? session.setCategory(.playback, mode: .default) }
 

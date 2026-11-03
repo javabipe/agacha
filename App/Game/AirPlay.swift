@@ -41,3 +41,46 @@ final class MirroringMonitor {
         isMirroring = scenes.contains { $0.screen.isCaptured }
     }
 }
+
+/// Como ver o jogo na TV. O espelhamento da tela inteira é do sistema (Centro de Controle); um app não consegue ligá-lo.
+struct TVHelpView: View {
+    let monitor: MirroringMonitor
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Label(monitor.isMirroring ? "A tela do iPad está aparecendo na TV." : "A tela ainda não está na TV.",
+                          systemImage: monitor.isMirroring ? "checkmark.tv.fill" : "tv")
+                        .font(.headline)
+                        .foregroundStyle(monitor.isMirroring ? Color.green : Color.primary)
+                }
+                Section("Espelhar a tela do iPad (recomendado)") {
+                    Text("1. Ligue a TV e confirme que o AirPlay está ativo nela "
+                         + "(em muitas Samsung: Configurações › Geral › Configurações do Apple AirPlay).")
+                    Text("2. No iPad, deslize para baixo a partir do canto superior direito para abrir o Centro de Controle.")
+                    Text("3. Toque em Espelhamento de Tela (dois retângulos) e escolha a sua TV. "
+                         + "Se a TV mostrar um código, digite no iPad.")
+                    Text("4. Volte ao Agacha: a TV mostra a mesma tela e o som sai por ela.")
+                }
+                Section {
+                    HStack {
+                        Text("Seletor de AirPlay do app")
+                        Spacer()
+                        AirPlayButton().frame(width: 36, height: 36)
+                    }
+                } footer: {
+                    Text("Este botão funciona como o do YouTube e, para um app de jogo, costuma mandar só o som para a TV "
+                         + "(em algumas TVs, nem isso). Para ver a imagem, use o Espelhamento de Tela acima.")
+                }
+                Section("Sem AirPlay?") {
+                    Text("Um cabo ou adaptador USB-C para HDMI espelha o iPad na TV sem depender de rede.")
+                }
+            }
+            .navigationTitle("Ver na TV")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button("Fechar") { dismiss() } }
+        }
+    }
+}

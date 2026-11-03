@@ -201,3 +201,7 @@ chico,names,intro,1,P0,"Vou conhecer vocês! Quando eu chamar, digam o seu nome.
 chico,names,pergunta,1,P0,Qual é o seu nome?,chico_names_pergunta_v1.wav
 chico,names,repetir,1,P0,Não entendi. Pode repetir o seu nome?,chico_names_repetir_v1.wav
 chico,names,prazer,1,P1,Prazer em conhecer você!,chico_names_prazer_v1.wav
+lu,fb,replay,1,P0,Vamos ver o replay!,lu_fb_replay_v1.wav
+lu,flow,voltem,1,P0,Voltem para o seu lugar!,lu_flow_voltem_v1.wav
+chico,fb,replay,1,P0,Vamos ver o replay!,chico_fb_replay_v1.wav
+chico,flow,voltem,1,P0,Voltem para o seu lugar!,chico_flow_voltem_v1.wav

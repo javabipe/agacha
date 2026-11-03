@@ -58,17 +58,17 @@ public struct Director: Sendable, Equatable {
         case .tranquilo:
             Profile(gapStart: 2200, gapStep: 60, gapFloor: 1200, trickFromNumber: nil,
                     repeatChance: 0.22, chainFromNumber: nil, allowsConsecutiveTricks: false,
-                    windowShrink: 0.025, windowFloor: 0.75)
+                    windowShrink: 0.025, windowFloor: 0.85)
         case .sapeca:
             Profile(gapStart: 1500, gapStep: 80, gapFloor: 500, trickFromNumber: 2,
                     trickStart: 0.25, trickGrowth: 0.02, trickMax: 0.55, repeatChance: 0.25,
                     chainFromNumber: 8, chainStart: 0.10, chainGrowth: 0.02, chainMax: 0.30,
-                    allowsConsecutiveTricks: false, windowShrink: 0.03, windowFloor: 0.65)
+                    allowsConsecutiveTricks: false, windowShrink: 0.03, windowFloor: 0.75)
         case .furacao:
             Profile(gapStart: 1000, gapStep: 50, gapFloor: 250, trickFromNumber: 1,
                     trickStart: 0.50, trickGrowth: 0.02, trickMax: 0.75, repeatChance: 0.30,
                     chainFromNumber: 1, chainStart: 0.30, chainGrowth: 0.01, chainMax: 0.45,
-                    allowsConsecutiveTricks: true, windowShrink: 0.04, windowFloor: 0.55)
+                    allowsConsecutiveTricks: true, windowShrink: 0.04, windowFloor: 0.65)
         }
     }
 

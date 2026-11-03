@@ -40,7 +40,6 @@ struct PlayView: View {
             VStack {
                 HStack(spacing: 16) {
                     Spacer()
-                    AirPlayButton().frame(width: 36, height: 36)
                     Button("Sair", systemImage: "xmark.circle.fill") { confirmQuit = true }
                         .labelStyle(.iconOnly)
                         .font(.title)

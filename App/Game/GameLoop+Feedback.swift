@@ -6,6 +6,7 @@ extension GameLoop {
     func playFeedback(for result: RoundResult) async {
         if result.isTie {
             await audio.speak(String(localized: "Todos erraram juntos!"))
+            await audio.play("fb_replay", fallbackText: "Vamos ver o replay!")
             return
         }
         for slot in result.wrong {
@@ -15,6 +16,8 @@ extension GameLoop {
         if result.finished == nil, !result.eliminated.isEmpty, result.survivors.count == 2 {
             await audio.play("fb_restam_dois", fallbackText: "Só restam dois! É a final!")
         }
+        guard !Task.isCancelled, !result.wrong.isEmpty else { return }
+        await audio.play("fb_replay", fallbackText: "Vamos ver o replay!")
     }
 
     func celebrate(_ result: GameResult) {

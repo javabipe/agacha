@@ -171,3 +171,10 @@ Pastas sugeridas: `pt-BR/lu/` e `pt-BR/chico/` (todos os arquivos do locutor jun
 | `names_prazer` | Prazer em conhecer você! | 1 | P1 | Calmo e simpático; faça uma pequena pausa no final, a pessoa vai responder em seguida. |
 
 Os nomes das crianças continuam sendo falados pela voz do sistema (ex.: "Paulo errou!").
+
+## 10. Replay e volta ao jogo (novo)
+
+| ID | Texto | Variações | Prior. | Direção |
+|---|---|---|---|---|
+| `fb_replay` | Vamos ver o replay! | 1 | P0 | Animado e claro: é o aviso para as crianças pararem de olhar a tela e voltarem à posição. |
+| `flow_voltem` | Voltem para o seu lugar! | 1 | P0 | Animado e claro: é o aviso para as crianças pararem de olhar a tela e voltarem à posição. |

@@ -32,7 +32,7 @@ final class GameLoop {
     var report = PositioningReport.empty
     var guidance: Guidance?
     var cameraError: String?
-    private(set) var countdownText: String?
+    var countdownText: String?
     private(set) var shownCommand: Command?
     private(set) var resultInfo: ResultInfo?
     /// Vídeo temporário da última rodada com erro (apagado ao seguir em frente).
@@ -132,7 +132,7 @@ final class GameLoop {
         stage = .playing
         let config = GameConfig(slots: slots, difficulty: settings.difficulty, tolerance: settings.tolerance,
                                 commandSet: settings.commandSet, seed: UInt64.random(in: 1...UInt64.max),
-                                rules: settings.tolerance.rules, maxErrors: settings.maxErrors)
+                                maxErrors: settings.maxErrors)
         if settings.recordReplay { recorder.start() }
         send(.start(config))
     }
@@ -140,7 +140,20 @@ final class GameLoop {
     func continueNow() {
         guard resultInfo?.isManual == true else { return }
         resultTask?.cancel()
-        send(.next)
+        resultInfo = nil
+        releaseReplay()
+        let needsCountdown = needsRestartCountdown
+        resultTask = Task {
+            if needsCountdown { await playRestartCountdown() }
+            guard !Task.isCancelled else { return }
+            send(.next)
+        }
+    }
+
+    /// Depois de uma rodada com erro (e a partida seguindo), os jogadores precisam de "3, 2, 1" para voltar ao lugar.
+    private var needsRestartCountdown: Bool {
+        guard case let .result(result) = state.phase else { return false }
+        return result.finished == nil && (!result.wrong.isEmpty || result.isTie)
     }
 
     /// "Foi injusto!": repete a rodada sem eliminar ninguém.
@@ -150,7 +163,10 @@ final class GameLoop {
         resultInfo = nil
         countdownText = String(localized: "Vamos repetir!")
         resultTask = Task {
+            releaseReplay()
             await audio.play("flow_repetir_rodada", fallbackText: "Tudo bem, vamos repetir essa!")
+            guard !Task.isCancelled else { return }
+            await playRestartCountdown()
             guard !Task.isCancelled else { return }
             countdownText = nil
             send(.unfair)
@@ -183,25 +199,13 @@ final class GameLoop {
     }
 
     private func runCountdown() {
-        let steps: [(clip: String, text: String, label: String)] = [
-            ("flow_vamos_brincar", "Vamos brincar de Agacha!", String(localized: "Vamos brincar!")),
-            ("flow_todos_em_pe", "Todo mundo em pé, de frente para mim!", String(localized: "Todos em pé!")),
-            ("flow_preparados", "Preparados?", String(localized: "Preparados?")),
-            ("flow_count_3", "Três!", "3"),
-            ("flow_count_2", "Dois!", "2"),
-            ("flow_count_1", "Um!", "1"),
-            ("flow_count_go", "Já!", String(localized: "JÁ!"))
+        let intro = [
+            CountdownStep(clip: "flow_vamos_brincar", text: "Vamos brincar de Agacha!", label: String(localized: "Vamos brincar!")),
+            CountdownStep(clip: "flow_todos_em_pe", text: "Todo mundo em pé, de frente para mim!", label: String(localized: "Todos em pé!"))
         ]
         gameTask = Task {
-            for step in steps {
-                countdownText = step.label
-                await audio.play(step.clip, fallbackText: step.text)
-                guard !Task.isCancelled else { return }
-                if step.clip.hasPrefix("flow_count_") { try? await Task.sleep(for: .milliseconds(250)) }
-                if step.clip == "flow_todos_em_pe" { await waitForCalibration() }
-                guard !Task.isCancelled else { return }
-            }
-            countdownText = nil
+            await playCountdown(intro + Self.readySteps, pauseAfter: ("flow_todos_em_pe", { await self.waitForCalibration() }))
+            guard !Task.isCancelled else { return }
             send(.countdownFinished)
         }
     }
@@ -270,11 +274,18 @@ final class GameLoop {
             }
         }
         let deadline = Self.now() + delay
+        let needsCountdown = hasDrama && result.finished == nil
         resultTask = Task {
             await playFeedback(for: result)
             let remaining = deadline - Self.now()
             if remaining > 0 { try? await Task.sleep(for: .seconds(remaining)) }
             guard !Task.isCancelled else { return }
+            if needsCountdown {
+                resultInfo = nil
+                releaseReplay()
+                await playRestartCountdown()
+                guard !Task.isCancelled else { return }
+            }
             send(.next)
         }
     }
