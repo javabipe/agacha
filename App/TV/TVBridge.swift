@@ -18,9 +18,6 @@ final class TVBridge {
     /// Mostrar a câmera de verdade na tela de posicionamento (teste). Exige o código na URL.
     private(set) var cameraOn = false
     private(set) var cameraAddress: String?
-    /// O replay em vídeo está pronto para a TV baixar (número muda a cada replay).
-    private(set) var replayVersion = 0
-    private(set) var hasReplay = false
     /// Tocar os sons na TV (em vez do iPad) quando houver TV conectada.
     var soundOnTV = true
 
@@ -43,7 +40,6 @@ final class TVBridge {
         guard on != isOn, !isStarting else { return }
         guard on else {
             server.stop()
-            hasReplay = false
             cameraStreamer.setEnabled(false)
             isOn = false
             address = nil
@@ -67,13 +63,6 @@ final class TVBridge {
             logger.error("Servidor da TV não iniciou: \(error.localizedDescription, privacy: .public)")
             errorMessage = String(localized: "Não consegui ligar a TV. Confira se o iPad está no Wi-Fi.")
         }
-    }
-
-    /// Entrega (ou apaga) o vídeo do replay à TV. Só serve a quem tem o código da câmera.
-    func setReplay(_ mp4: Data?) {
-        server.setReplay(mp4)
-        hasReplay = mp4 != nil
-        if mp4 != nil { replayVersion += 1 }
     }
 
     func publishPose(_ pose: TVPose) {

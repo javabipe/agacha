@@ -52,12 +52,8 @@ import Testing
         let recorder = ClipRecorder(directory: directory)
         recorder.start()
         await record(recorder, seconds: 14)
-        // Os segmentos fecham (e os velhos somem) um pouco depois de gravar: espera estabilizar.
-        // (Os 4 guardados, o que está gravando e o arquivo temporário que o AVFoundation usa nele.)
-        for _ in 0..<40 where recorder.storedFileCount > ClipRecorder.keptSegments + 2 {
-            try? await Task.sleep(for: .milliseconds(100))
-        }
-        #expect(recorder.storedFileCount <= ClipRecorder.keptSegments + 2)
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(recorder.storedFileCount <= ClipRecorder.keptSegments + 1)
         recorder.stop()
     }
 
@@ -84,24 +80,6 @@ import Testing
         recorder.resume()
         await record(recorder, seconds: 1, from: 20)
         #expect(recorder.storedFileCount >= 1)
-        recorder.stop()
-    }
-
-    @Test func exportsAStreamableMP4AndLeavesNoFileBehind() async throws {
-        let directory = tempDirectory()
-        let recorder = ClipRecorder(directory: directory)
-        recorder.start()
-        await record(recorder, seconds: 6)
-        let asset = try #require(await recorder.capture(seconds: 3))
-        let data = try #require(await recorder.exportMP4(ReplayAsset(asset)))
-        #expect(data.count > 1000)
-        #expect(String(bytes: data.subdata(in: 4..<8), encoding: .ascii) == "ftyp")
-        // "moov" antes de "mdat": o navegador da TV começa a tocar sem baixar tudo.
-        let moov = try #require(data.range(of: Data("moov".utf8))).lowerBound
-        let mdat = try #require(data.range(of: Data("mdat".utf8))).lowerBound
-        #expect(moov < mdat)
-        recorder.resume()
-        #expect(recorder.storedFileCount == 0)
         recorder.stop()
     }
 }

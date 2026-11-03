@@ -157,47 +157,6 @@ private final class Collected: @unchecked Sendable {
     }
 }
 
-extension TVServerTests {
-    @Test func replayNeedsTheCodeAndSupportsRanges() async throws {
-        let (server, port) = try await start()
-        defer { server.stop() }
-        let video = Data((0..<1000).map { UInt8($0 % 251) })
-        server.setReplay(video)
-        // Sem câmera/código ligados: negado, mesmo com vídeo guardado.
-        #expect(try await get(port, "/replay.mp4?t=1111").0 == 403)
-        server.setCameraToken("1111")
-        #expect(try await get(port, "/replay.mp4?t=9999").0 == 403)
-        let whole = try await get(port, "/replay.mp4?v=1&t=1111")
-        #expect(whole.0 == 200)
-        #expect(whole.1 == video)
-
-        func partial(_ range: String) async throws -> (Int, Data, String?) {
-            var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/replay.mp4?t=1111")!)
-            request.setValue(range, forHTTPHeaderField: "Range")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            let http = response as? HTTPURLResponse
-            return (http?.statusCode ?? 0, data, http?.value(forHTTPHeaderField: "Content-Range"))
-        }
-        let first = try await partial("bytes=0-99")
-        #expect(first.0 == 206 && first.1 == video.prefix(100) && first.2 == "bytes 0-99/1000")
-        let open = try await partial("bytes=900-")
-        #expect(open.0 == 206 && open.1 == video.suffix(100) && open.2 == "bytes 900-999/1000")
-        let tail = try await partial("bytes=-50")
-        #expect(tail.0 == 206 && tail.1 == video.suffix(50))
-        #expect(try await partial("bytes=2000-3000").0 == 416)
-
-        server.setReplay(nil)
-        #expect(try await get(port, "/replay.mp4?t=1111").0 == 404)
-    }
-
-    @Test func byteRangeParsing() {
-        #expect(TVServer.byteRange(in: "GET / HTTP/1.1\r\nRange: bytes=5-9", total: 100)! == (5, 9))
-        #expect(TVServer.byteRange(in: "GET / HTTP/1.1\r\nrange: bytes=90-", total: 100)! == (90, 99))
-        #expect(TVServer.byteRange(in: "GET / HTTP/1.1\r\nRange: bytes=-10", total: 100)! == (90, 99))
-        #expect(TVServer.byteRange(in: "GET / HTTP/1.1\r\nHost: x", total: 100) == nil)
-    }
-}
-
 /// Cliente TCP simples (como o navegador da TV), para ver exatamente o que o servidor envia.
 private final class RawClient: @unchecked Sendable {
     private let connection: NWConnection
