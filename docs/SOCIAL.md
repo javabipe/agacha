@@ -13,7 +13,7 @@ Estado: **simulação** com dados de exemplo (telas "Momentos" e "Compartilhar m
 
 ## O que propomos para o Aganha!
 1. **Vídeo só de avatares, por padrão.** O jogo já guarda as poses (esqueletos) de cada criança; dá para renderizar o mesmo momento como vídeo vertical **sem nenhum rosto real** (avatar dançando/chorando, placar, tempos, marca e hashtag). É o diferencial: viral **e** seguro para crianças. A câmera de verdade fica como opção, com consentimento.
-2. **Portão para adultos** antes de qualquer compartilhamento (já na simulação: conta de multiplicar).
+2. **Portão para adultos:** a conta de multiplicar foi **retirada** a pedido do Paulo (2026-11-17). A App Store (categoria Kids) ainda exige algum portão antes de compartilhar/links; **decidir um portão mais simples antes de publicar** (ex.: segurar um botão por 3 s).
 3. **Primeiro, share sheet do sistema** (vale para TikTok, Instagram, YouTube, WhatsApp, AirDrop, Mensagens e "Salvar no álbum"), sem login e sem SDK de terceiros. SDKs de TikTok/Instagram só depois, se valer a pena.
 4. **Desafio com hashtag** (#AganhaChallenge) e marca d'água com o nome do jogo; legenda sugerida editável.
 
@@ -23,7 +23,7 @@ Estado: **simulação** com dados de exemplo (telas "Momentos" e "Compartilhar m
 - Política de privacidade obrigatória (5.1.4). O vídeo só de avatares evita a maior parte do risco.
 
 ## Fases
-1. **(feito) Simulação:** telas Momentos e Compartilhar, portão para adultos, "Mais…" abre o share sheet do iOS só com a legenda.
+1. **(feito) Simulação:** telas Momentos e Compartilhar, "Mais…" abre o share sheet do iOS só com a legenda.
 2. **Vídeo de avatares local:** renderizar o clipe 9:16 no aparelho (AVAssetWriter) a partir das poses gravadas durante a partida; salvar no álbum e compartilhar pelo share sheet.
 3. **SDKs diretos (opcional):** TikTok Share Kit e Reels, com contas de desenvolvedor e revisão das plataformas.
 4. **Feed de verdade ("Momentos" público):** exige servidor, moderação e consentimento dos pais; provavelmente incompatível com a categoria Kids. Decidir com cuidado (alternativa: link privado para a família).

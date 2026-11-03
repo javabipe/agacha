@@ -2,7 +2,7 @@ import AganhaSocial
 import SwiftUI
 import UIKit
 
-/// Folha de compartilhamento (SIMULAÇÃO): prévia vertical, legenda, destinos e portão para adultos.
+/// Folha de compartilhamento (SIMULAÇÃO): prévia vertical, legenda e destinos.
 /// Nada sai do aparelho ainda; os botões só mostram como o fluxo vai ser.
 struct ShareClipView: View {
     enum Stage: Equatable {
@@ -15,7 +15,6 @@ struct ShareClipView: View {
     let onClose: () -> Void
     @State private var caption = ""
     @State private var showRealKids = false
-    @State private var pending: SocialNetwork?
     @State private var stage = Stage.choosing
     @State private var systemSheet = false
     @State private var shareItems: [Any] = []
@@ -44,9 +43,6 @@ struct ShareClipView: View {
         }
         .foregroundStyle(.white)
         .onAppear { if caption.isEmpty { caption = Self.suggestedCaption(for: moment) } }
-        .sheet(item: $pending) { network in
-            ParentalGateView(onPass: { pending = nil; send(to: network) }, onCancel: { pending = nil })
-        }
         .sheet(isPresented: $systemSheet) { ActivityView(items: shareItems) }
         .alert("Mostrar as crianças de verdade?", isPresented: $confirmReal) {
             Button("Sim, tenho autorização") { showRealKids = true }
@@ -101,8 +97,11 @@ struct ShareClipView: View {
             Text("Legenda").font(.headline)
             TextField("Legenda", text: $caption, axis: .vertical)
                 .lineLimit(3...5)
-                .textFieldStyle(.roundedBorder)
-                .foregroundStyle(.black)
+                .textFieldStyle(.plain)
+                .padding(12)
+                .background(.white, in: .rect(cornerRadius: 12))
+                .foregroundStyle(Color(hex: "#1B1433"))
+                .tint(Color(hex: "#1FA98A"))
             Toggle(isOn: Binding(get: { showRealKids }, set: { if $0 { confirmReal = true } else { showRealKids = false } })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Mostrar as crianças de verdade").font(.headline)
@@ -120,7 +119,7 @@ struct ShareClipView: View {
     private var destinations: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
             ForEach(SocialNetwork.allCases) { network in
-                Button { pending = network } label: {
+                Button { send(to: network) } label: {
                     Label(network.title, systemImage: network.symbol)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
