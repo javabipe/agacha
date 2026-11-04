@@ -150,3 +150,14 @@ func TestClientIPTrustsForwardedOnlyFromInternalPeers(t *testing.T) {
 		t.Errorf("origem externa nao pode escolher o proprio IP: %s", got)
 	}
 }
+
+func TestWWWRedirectsToTheBareDomain(t *testing.T) {
+	handler := newTestServer()
+	request := httptest.NewRequest("GET", "/abc?x=1", nil)
+	request.Host = "www.agacha.app"
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusMovedPermanently || recorder.Header().Get("Location") != "https://agacha.app/abc?x=1" {
+		t.Errorf("www: %d %q", recorder.Code, recorder.Header().Get("Location"))
+	}
+}

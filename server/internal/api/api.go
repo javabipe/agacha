@@ -43,7 +43,18 @@ func New(store *pairing.Store, limiter *pairing.Limiter, static fs.FS) http.Hand
 	mux.HandleFunc("POST /api/tv/claim", s.claim)
 	mux.HandleFunc("POST /api/app/offer", s.offer)
 	mux.HandleFunc("POST /api/app/pair", s.pair)
-	return mux
+	return redirectWWW(mux)
+}
+
+// redirectWWW leva www.agacha.app (e qualquer www.) para o endereço sem www, que é o que a TV digita.
+func redirectWWW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if host := strings.ToLower(r.Host); strings.HasPrefix(host, "www.") {
+			http.Redirect(w, r, "https://"+host[len("www."):]+r.URL.RequestURI(), http.StatusMovedPermanently)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ---- páginas
@@ -226,4 +237,3 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 func writeError(w http.ResponseWriter, status int, code string) {
 	writeJSON(w, status, map[string]any{"error": code})
 }
-
