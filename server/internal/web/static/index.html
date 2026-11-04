@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Agacha! na TV</title>
+<link rel="stylesheet" href="/tv.css">
+</head>
+<body>
+<div id="box">
+  <h1>Agacha!</h1>
+  <p class="lead">No iPad, toque em <b>Conectar TV</b> e digite este código:</p>
+  <div id="code" aria-live="polite">····</div>
+  <p id="status">Preparando…</p>
+  <form id="claimForm" autocomplete="off">
+    <label for="claimCode">Ou digite aqui o código que aparece no iPad:</label>
+    <input id="claimCode" type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off">
+    <button id="claimButton" type="submit">Conectar</button>
+  </form>
+  <p class="hint">Dica: salve esta página nos favoritos da TV.</p>
+</div>
+<script src="/tv.js"></script>
+</body>
+</html>

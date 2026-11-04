@@ -1,0 +1,12 @@
+html,body{margin:0;height:100%;background:#1B1433;color:#fff;font-family:Arial,Helvetica,sans-serif;text-align:center}
+#box{padding-top:6vh}
+h1{margin:0;font-size:9vh;color:#FFC845;letter-spacing:.2vh}
+.lead{font-size:4vh;margin:3vh 4vw 1vh}
+#code{display:inline-block;margin:1vh 0;padding:1vh 5vw;border-radius:3vh;background:#3A2A6B;color:#fff;font-size:22vh;font-weight:900;letter-spacing:2vh}
+#status{font-size:3.4vh;color:#FFC845;min-height:5vh;margin:1vh 0 3vh}
+form{margin:0 auto;font-size:3.4vh}
+label{display:block;margin-bottom:1.2vh;opacity:.85}
+input{width:16vh;font-size:6vh;text-align:center;border:0;border-radius:1.5vh;padding:1vh;margin-right:1.5vw}
+button{font-size:4.4vh;font-weight:700;border:0;border-radius:1.5vh;padding:1.4vh 3vw;background:#36C9A6;color:#1B1433}
+input:focus,button:focus{outline:.8vh solid #FFC845}
+.hint{margin-top:5vh;font-size:2.8vh;opacity:.65}

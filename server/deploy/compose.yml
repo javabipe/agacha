@@ -1,0 +1,30 @@
+# Backend do agacha.app (roteador de pareamento). Sobe em 127.0.0.1:3501; o Caddy da borda faz o HTTPS.
+# Uso: docker compose -f server/deploy/compose.yml up -d --build
+name: agacha-prod
+
+services:
+  pairing:
+    build:
+      context: ..
+    image: agacha-server:local
+    container_name: agacha-pairing
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3501:8080"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    pids_limit: 128
+    environment:
+      LISTEN_ADDR: ":8080"
+    healthcheck:
+      test: ["CMD", "/agacha-server", "-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
