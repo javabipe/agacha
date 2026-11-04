@@ -293,7 +293,7 @@ function drawAvatar(g, f, ox, oy, bw, bh){
     var c = drawHead(g, f, { nose: nose, eyeL: eyes[0], eyeR: eyes[1], earL: ears[0], earR: ears[1] }, r, hair, ew, raised);
     if (f.host) { g.globalAlpha = 1; return; }
     g.font = 'bold ' + Math.round(bh * 0.06) + 'px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    var label = f.name + (f.mood === 'win' ? ' ★' : (f.mood === 'sad' ? '' : (f.ready ? ' ✓' : ' !'))), tw = g.measureText(label).width, ph = bh * 0.085;
+    var label = f.name + (f.plain ? (f.ready ? '' : ' !') : f.mood === 'win' ? ' ★' : (f.mood === 'sad' ? '' : (f.ready ? ' ✓' : ' !'))), tw = g.measureText(label).width, ph = bh * 0.085;
     var py = Math.max(oy + ph * 0.1, c[1] - r * 1.15 - ph * 1.25);
     pill(g, c[0] - tw / 2 - ph * 0.45, py, tw + ph * 0.9, ph, 'rgba(0,0,0,0.55)');
     g.fillStyle = f.color; g.fillText(label, c[0], py + ph / 2 + 1);

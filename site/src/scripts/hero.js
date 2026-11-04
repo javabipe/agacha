@@ -3,10 +3,10 @@
 import { drawAvatar, figureJoints, lerp, smooth } from './avatars.js';
 
 const KIDS = [
-  { name: 'Bia', color: '#FF8F6B', look: 'girl', cx: 0.14 },
-  { name: 'Theo', color: '#36C9A6', look: 'boy', cx: 0.38 },
-  { name: 'Lara', color: '#FFC845', look: 'girl', cx: 0.62 },
-  { name: 'Davi', color: '#9BD3FF', look: 'boy', cx: 0.86 },
+  { name: 'Bia', color: '#FF8F6B', look: 'girl', cx: 0.13 },
+  { name: 'Theo', color: '#36C9A6', look: 'boy', cx: 0.375 },
+  { name: 'Lara', color: '#FFC845', look: 'girl', cx: 0.625 },
+  { name: 'Davi', color: '#9BD3FF', look: 'boy', cx: 0.87 },
 ];
 const STAND = { headY: -0.68, shoulderY: -0.58, hipY: -0.32, kneeW: 0.036, kneeY: -0.16, footW: 0.036, arm: [0.12, 0.05] };
 const CROUCH = { headY: -0.40, shoulderY: -0.31, hipY: -0.15, kneeW: 0.078, kneeY: -0.115, footW: 0.052, arm: [0.6, 0.25] };
@@ -32,7 +32,6 @@ export function startHero() {
   const screen = document.getElementById('screen');
   const armsUp = document.querySelector('#heroHost .arms-up'), armsDown = document.querySelector('#heroHost .arms-down');
   const stat = ['kB', 'kT', 'kL', 'kD'].map((id) => document.getElementById(id));
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const state = KIDS.map(() => ({ c: 0, target: 0 }));
   let vivo = true, step = 0, visible = true, last = performance.now(), t0 = last;
   let erred = false, running = false;
@@ -49,7 +48,7 @@ export function startHero() {
     g.fillStyle = '#2A1E4F'; g.fillRect(0, 0, W, H);
     g.fillStyle = '#3F3160'; g.fillRect(0, H * 0.82, W, H * 0.18);
     KIDS.forEach((k, i) => {
-      const f = { name: k.name, color: k.color, look: k.look, ready: !(i === 2 && erred), mood: '',
+      const f = { name: k.name, color: k.color, look: k.look, ready: !(i === 2 && erred), mood: '', plain: true,
                   joints: figureJoints({ cx: k.cx, floor: 0.93, k: 0.74 }, aspect, spec(state[i].c, t, i)), floor: 0.93 };
       drawAvatar(g, f, 0, 0, W, H);
     });
@@ -75,9 +74,9 @@ export function startHero() {
     draw(now);
     if (running && visible && !document.hidden) requestAnimationFrame(frame);
   }
-  // Com "reduzir movimento" ligado a animação começa parada, mas o visitante pode ligá-la no botão.
+  // Começa rodando sempre (o movimento é pequeno e o botão permite pausar).
   const button = document.getElementById('heroToggle');
-  let timer = null; running = !reduce;
+  let timer = null; running = true;
   function sync() {
     if (button) {
       button.textContent = running ? '⏸ Pausar animação' : '▶ Ver animação';
