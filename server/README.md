@@ -23,4 +23,4 @@ código e a TV digita.
     docker build -t agacha-server server      # compila rodando go vet e go test
     docker compose -f server/deploy/compose.yml up -d --build
 
-`deploy/caddy/agacha.caddy` é o trecho do Caddy da borda (HTTPS e cabeçalhos); `deploy/deploy.sh` atualiza o servidor.
+O HTTPS e o DNS ficam na Cloudflare (túnel `agacha` -> `cloudflared` -> `pairing:8080`); os cabeçalhos de segurança saem do próprio servidor. `deploy/deploy.sh` atualiza o servidor (puxa o repositório, recompila e roda os testes).

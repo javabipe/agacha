@@ -43,7 +43,22 @@ func New(store *pairing.Store, limiter *pairing.Limiter, static fs.FS) http.Hand
 	mux.HandleFunc("POST /api/tv/claim", s.claim)
 	mux.HandleFunc("POST /api/app/offer", s.offer)
 	mux.HandleFunc("POST /api/app/pair", s.pair)
-	return redirectWWW(mux)
+	return secureHeaders(redirectWWW(mux))
+}
+
+// secureHeaders põe os cabeçalhos de segurança em toda resposta (a Cloudflare está na frente, sem proxy reverso nosso).
+func secureHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := w.Header()
+		header.Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+		header.Set("X-Content-Type-Options", "nosniff")
+		header.Set("Referrer-Policy", "no-referrer")
+		header.Set("X-Frame-Options", "DENY")
+		header.Set("Cross-Origin-Opener-Policy", "same-origin")
+		header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()")
+		header.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // redirectWWW leva www.agacha.app (e qualquer www.) para o endereço sem www, que é o que a TV digita.

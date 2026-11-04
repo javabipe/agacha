@@ -161,3 +161,16 @@ func TestWWWRedirectsToTheBareDomain(t *testing.T) {
 		t.Errorf("www: %d %q", recorder.Code, recorder.Header().Get("Location"))
 	}
 }
+
+func TestEveryResponseCarriesSecurityHeaders(t *testing.T) {
+	handler := newTestServer()
+	for _, path := range []string{"/", "/healthz", "/nao-existe", "/tv.js"} {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest("GET", path, nil))
+		for _, name := range []string{"Content-Security-Policy", "X-Content-Type-Options", "Referrer-Policy", "X-Frame-Options", "Strict-Transport-Security"} {
+			if recorder.Header().Get(name) == "" {
+				t.Errorf("%s sem %s", path, name)
+			}
+		}
+	}
+}
