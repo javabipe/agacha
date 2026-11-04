@@ -42,7 +42,7 @@ struct HomeView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(loop: loop, onDiagnostic: { showSettings = false; onDiagnostic() }, onClose: { showSettings = false })
         }
-        .sheet(isPresented: $showTV) { TVHelpView(monitor: mirroring, tv: loop.tv) }
+        .sheet(isPresented: $showTV) { ConnectTVView(loop: loop) }
         .fullScreenCover(isPresented: $showMoments) { MomentsView(loop: loop, onClose: { showMoments = false }) }
         .onAppear { pulse = true }
     }
@@ -52,7 +52,7 @@ struct HomeView: View {
     private var topBar: some View {
         HStack {
             Button { showTV = true } label: {
-                Label(loop.tv.connectedScreens > 0 || mirroring.isMirroring ? "TV conectada" : "Ver na TV", systemImage: "tv")
+                Label(loop.tv.connectedScreens > 0 || mirroring.isMirroring ? "TV conectada" : "Conectar TV", systemImage: "tv")
                     .font(.subheadline.weight(.bold))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)

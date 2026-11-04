@@ -12,6 +12,10 @@ final class TVBridge {
     private(set) var isStarting = false
     /// Endereço para digitar no navegador da TV.
     private(set) var address: String?
+    /// Endereço do iPad na rede da casa (para o agacha.app levar a TV até aqui).
+    private(set) var host: String?
+    private(set) var port: Int?
+    private(set) var cameraToken: String?
     /// Quantos navegadores estão conectados agora.
     private(set) var connectedScreens = 0
     private(set) var errorMessage: String?
@@ -47,6 +51,9 @@ final class TVBridge {
             cameraStreamer.setEnabled(false)
             isOn = false
             address = nil
+            host = nil
+            port = nil
+            cameraToken = nil
             cameraOn = false
             cameraAddress = nil
             connectedScreens = 0
@@ -61,7 +68,9 @@ final class TVBridge {
             server.setStreamsObserver { [weak self] count in
                 Task { @MainActor in self?.connectedScreens = count }
             }
-            address = "http://\(LocalAddress.ipv4() ?? "?"):\(port)"
+            host = LocalAddress.ipv4()
+            self.port = Int(port)
+            address = "http://\(host ?? "?"):\(port)"
             isOn = true
         } catch {
             logger.error("Servidor da TV não iniciou: \(error.localizedDescription, privacy: .public)")
@@ -98,11 +107,13 @@ final class TVBridge {
             cameraStreamer.setEnabled(false)
             cameraOn = false
             cameraAddress = nil
+            cameraToken = nil
             return
         }
         let token = String(Int.random(in: 1000...9999))
         server.setCameraToken(token)
         cameraOn = true
+        cameraToken = token
         cameraAddress = address.map { "\($0)/?t=\(token)" }
     }
 
