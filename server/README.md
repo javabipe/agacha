@@ -6,6 +6,7 @@ código e a TV digita.
 
 - Linguagem: Go (só a biblioteca padrão). Sem banco de dados: códigos ficam só na memória, por 10 minutos.
 - Privacidade: sem log de acesso; o servidor só vê o endereço privado do iPad e some com ele em minutos.
+- Entrada: túnel da Cloudflare (`cloudflared`); o servidor não abre porta nenhuma para o agacha.app.
 - Segurança: só aceita IPv4 privado (10.x, 172.16–31.x, 192.168.x) e portas 1024–65535, então nunca redireciona para fora
   da rede local; 10 tentativas de código por minuto por IP e 300 por minuto no total.
 

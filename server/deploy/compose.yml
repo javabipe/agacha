@@ -1,4 +1,6 @@
 # Backend do agacha.app (roteador de pareamento). Sobe em 127.0.0.1:3501; o Caddy da borda faz o HTTPS.
+# O HTTPS vem pelo túnel da Cloudflare (agacha.app -> cloudflared -> pairing:8080): nenhuma porta aberta no servidor.
+# O token do túnel fica só em /opt/agacha/.env (arquivo do root, fora do repositório).
 # Uso: docker compose -f server/deploy/compose.yml up -d --build
 name: agacha-prod
 
@@ -23,6 +25,27 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    container_name: agacha-cloudflared
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    env_file:
+      - /opt/agacha/.env
+    depends_on:
+      pairing:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    pids_limit: 128
     logging:
       driver: json-file
       options:
