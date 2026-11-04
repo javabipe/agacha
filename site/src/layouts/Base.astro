@@ -1,0 +1,40 @@
+---
+import '../styles/global.css';
+interface Props { title: string; description?: string; path?: string }
+const { title, description = 'Agacha!: a brincadeira do morto-vivo com câmera. A tia fala, as crianças levantam e agacham, e o iPad vê quem errou.', path = '/' } = Astro.props;
+const url = new URL(path, 'https://agacha.com.br').href;
+---
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={url} />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={url} />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:image" content="https://agacha.com.br/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#1B1433" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <script is:inline>
+    try { var t = localStorage.getItem('agacha-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  </script>
+</head>
+<body>
+  <slot />
+  <script>
+    const root = document.documentElement;
+    const cur = () => root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.getElementById('themeBtn')?.addEventListener('click', () => {
+      const next = cur() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('agacha-theme', next); } catch (e) {}
+    });
+  </script>
+</body>
+</html>

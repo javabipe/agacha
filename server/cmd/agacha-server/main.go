@@ -32,7 +32,7 @@ func main() {
 	limiter := pairing.NewLimiter(nil)
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           api.New(store, limiter, web.Static()),
+		Handler:           api.New(store, limiter, web.Static(), web.Site()),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		IdleTimeout:       60 * time.Second,

@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+const tips = [
+  ['A câmera não reconhece alguém', 'Afaste o iPad até as crianças aparecerem inteiras, da cabeça aos pés, com boa luz e sem pessoas passando na frente.'],
+  ['A TV não encontra o jogo', 'Confira se a TV e o iPad estão no mesmo Wi-Fi. No iPad, toque em "Conectar TV" e digite o código que a TV mostra em agacha.app. Se não houver internet, use o endereço direto mostrado no app.'],
+  ['Sem som na TV', 'Alguns navegadores de TV só liberam o som depois de um toque. Aperte OK no controle remoto uma vez.'],
+  ['Apagar momentos guardados', 'Nos Ajustes do jogo, desligue "Guardar momentos" e use "Apagar tudo".'],
+];
+---
+<Base title="Suporte · Agacha!" description="Ajuda para jogar o Agacha!: câmera, TV e momentos." path="/suporte">
+  <Nav />
+  <main><section><div class="wrap prose">
+    <span class="eyebrow">Suporte</span>
+    <h1 style="font-size:clamp(34px,5vw,52px);margin-top:8px">Precisa de ajuda?</h1>
+    <p>Escreva para <a href="mailto:contato@agacha.com.br"><strong>contato@agacha.com.br</strong></a> e conte o que aconteceu (aparelho, versão do iOS e a TV, se houver).</p>
+    {tips.map(([q, a]) => (<details><summary>{q}</summary><p>{a}</p></details>))}
+  </div></section></main>
+  <Footer />
+</Base>

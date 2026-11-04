@@ -31,7 +31,8 @@ type Server struct {
 	static  fs.FS
 }
 
-func New(store *pairing.Store, limiter *pairing.Limiter, static fs.FS) http.Handler {
+// New monta o roteador do agacha.app. A landing page (agacha.com.br) vem de site; sem ela (nil), só o pareamento responde.
+func New(store *pairing.Store, limiter *pairing.Limiter, static, site fs.FS) http.Handler {
 	s := &Server{store: store, limiter: limiter, static: static}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.page("index.html", "text/html; charset=utf-8"))
@@ -43,7 +44,41 @@ func New(store *pairing.Store, limiter *pairing.Limiter, static fs.FS) http.Hand
 	mux.HandleFunc("POST /api/tv/claim", s.claim)
 	mux.HandleFunc("POST /api/app/offer", s.offer)
 	mux.HandleFunc("POST /api/app/pair", s.pair)
-	return secureHeaders(redirectWWW(mux))
+	if site == nil {
+		return secureHeaders(redirectWWW(mux))
+	}
+	return redirectWWW(landing(site, secureHeaders(mux)))
+}
+
+// landingHost é o domínio da landing page; o agacha.app continua só com o pareamento.
+const landingHost = "agacha.com.br"
+
+// landing serve a landing page no agacha.com.br e deixa o resto (incluindo /healthz) para o roteador de pareamento.
+func landing(site fs.FS, other http.Handler) http.Handler {
+	files := http.FileServerFS(site)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := strings.ToLower(r.Host)
+		if i := strings.IndexByte(host, ':'); i >= 0 {
+			host = host[:i]
+		}
+		if host != landingHost || r.URL.Path == "/healthz" {
+			other.ServeHTTP(w, r)
+			return
+		}
+		header := w.Header()
+		header.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+		header.Set("X-Content-Type-Options", "nosniff")
+		header.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		header.Set("X-Frame-Options", "DENY")
+		header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()")
+		header.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		if strings.HasPrefix(r.URL.Path, "/_astro/") {
+			header.Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			header.Set("Cache-Control", "no-cache")
+		}
+		files.ServeHTTP(w, r)
+	})
 }
 
 // secureHeaders põe os cabeçalhos de segurança em toda resposta (a Cloudflare está na frente, sem proxy reverso nosso).

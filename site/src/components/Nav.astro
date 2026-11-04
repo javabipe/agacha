@@ -1,0 +1,20 @@
+---
+const home = Astro.props.home ?? false;
+const p = home ? '' : '/';
+---
+<nav class="nav">
+  <div class="wrap">
+    <a href="/" class="logo"><span class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 L12 11 M8 7 L12 3 L16 7" stroke="#2A1E3F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 21 C6 16 9 14 12 14 C15 14 18 16 18 21 Z" fill="#2A1E3F"/></svg></span>Agacha!</a>
+    <div class="navlinks">
+      <a href={`${p}#como`}>Como funciona</a>
+      <a href={`${p}#tv`}>Na TV</a>
+      <a href={`${p}#privacidade`}>Privacidade</a>
+      <a href={`${p}#tia-e-tio`}>Tia e Tio</a>
+      <a href={`${p}#faq`}>Perguntas</a>
+    </div>
+    <div class="tools">
+      <button type="button" class="ic" id="themeBtn" aria-label="Alternar tema claro e escuro"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 A9 9 0 1 0 21 12 A7 7 0 0 1 12 3 Z" fill="currentColor"/></svg></button>
+      <a href={`${p}#baixar`} class="btn btn-coral" style="min-height:40px;padding:0 16px;font-size:14px">Em breve</a>
+    </div>
+  </div>
+</nav>

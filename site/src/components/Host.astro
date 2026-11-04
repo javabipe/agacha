@@ -1,0 +1,35 @@
+---
+// A tia (e, com a variação, o tio) desenhados em SVG, no estilo aprovado da referência.
+interface Props { kind?: 'tia' | 'tio'; id?: string; armsUp?: boolean; class?: string }
+const { kind = 'tia', id = 'h', armsUp = true, class: cls = '' } = Astro.props;
+const tio = kind === 'tio';
+const hairA = tio ? '#4A3426' : '#7A4A2E', hairB = tio ? '#241810' : '#3B2114';
+const dressA = tio ? '#8CC4F5' : '#FFE08A', dressB = tio ? '#3F88D0' : '#E7A61E';
+---
+<svg class={cls} viewBox="0 0 300 262" aria-hidden="true">
+  <defs>
+    <radialGradient id={`${id}sk`} cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#FFDFC2"/><stop offset="1" stop-color="#E0A882"/></radialGradient>
+    <linearGradient id={`${id}dr`} x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color={dressA}/><stop offset="1" stop-color={dressB}/></linearGradient>
+    <radialGradient id={`${id}hr`} cx="40%" cy="30%" r="75%"><stop offset="0" stop-color={hairA}/><stop offset="1" stop-color={hairB}/></radialGradient>
+  </defs>
+  <g class="arms-up" style={armsUp ? '' : 'display:none'}>
+    <path d="M100 190 C70 160 50 110 46 60" stroke={`url(#${id}sk)`} stroke-width="26" stroke-linecap="round" fill="none"/>
+    <path d="M200 190 C230 160 250 110 254 60" stroke={`url(#${id}sk)`} stroke-width="26" stroke-linecap="round" fill="none"/>
+    <circle cx="44" cy="54" r="18" fill={`url(#${id}sk)`}/><circle cx="256" cy="54" r="18" fill={`url(#${id}sk)`}/>
+  </g>
+  <g class="arms-down" style={armsUp ? 'display:none' : ''}>
+    <path d="M98 190 C80 210 66 230 58 248" stroke={`url(#${id}sk)`} stroke-width="26" stroke-linecap="round" fill="none"/>
+    <path d="M202 190 C220 210 234 230 242 248" stroke={`url(#${id}sk)`} stroke-width="26" stroke-linecap="round" fill="none"/>
+    <circle cx="56" cy="250" r="17" fill={`url(#${id}sk)`}/><circle cx="244" cy="250" r="17" fill={`url(#${id}sk)`}/>
+  </g>
+  <path d="M70 258 C70 200 95 170 150 170 C205 170 230 200 230 258 Z" fill={`url(#${id}dr)`}/>
+  {!tio && <g fill="#FFF6E5" opacity=".55"><circle cx="110" cy="220" r="5"/><circle cx="150" cy="235" r="5"/><circle cx="190" cy="215" r="5"/></g>}
+  <rect x="138" y="148" width="24" height="26" rx="10" fill="#E0A882"/>
+  <circle cx="150" cy="118" r="52" fill={`url(#${id}sk)`}/>
+  <path d="M98 114 C98 70 202 70 202 114 C190 96 170 88 150 88 C130 88 110 96 98 114 Z" fill={`url(#${id}hr)`}/>
+  {!tio && <circle cx="150" cy="66" r="20" fill={`url(#${id}hr)`}/>}
+  <g stroke="#2A1E3F" stroke-width="3" fill="rgba(255,255,255,.18)"><circle cx="131" cy="122" r="13"/><circle cx="169" cy="122" r="13"/><path d="M144 122 H156" fill="none"/></g>
+  <circle cx="131" cy="123" r="4.5" fill="#2A1E3F"/><circle cx="169" cy="123" r="4.5" fill="#2A1E3F"/>
+  {tio && <path d="M126 142 Q150 134 174 142 Q150 150 126 142 Z" fill={hairB}/>}
+  <path d="M132 148 Q150 164 168 148" stroke="#C94A38" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>

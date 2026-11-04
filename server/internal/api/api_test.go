@@ -18,7 +18,7 @@ func newTestServer() http.Handler {
 		"tv.js":      {Data: []byte("//js")},
 		"tv.css":     {Data: []byte("/*css*/")},
 	}
-	return New(pairing.NewStore(nil), pairing.NewLimiter(nil), static)
+	return New(pairing.NewStore(nil), pairing.NewLimiter(nil), static, nil)
 }
 
 func call(handler http.Handler, method, path string, body any, ip string) (int, map[string]any) {
@@ -172,5 +172,32 @@ func TestEveryResponseCarriesSecurityHeaders(t *testing.T) {
 				t.Errorf("%s sem %s", path, name)
 			}
 		}
+	}
+}
+
+func TestLandingOnlyOnItsDomain(t *testing.T) {
+	site := fstest.MapFS{"index.html": {Data: []byte("<html>landing</html>")}, "privacidade/index.html": {Data: []byte("privacy")}}
+	handler := New(pairing.NewStore(nil), pairing.NewLimiter(nil), fstest.MapFS{"index.html": {Data: []byte("tv")}}, site)
+	get := func(host, path string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		request.Host = host
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		return recorder
+	}
+	if body := get("agacha.com.br", "/").Body.String(); !strings.Contains(body, "landing") {
+		t.Fatalf("landing esperada no agacha.com.br, veio %q", body)
+	}
+	if body := get("agacha.com.br", "/privacidade/").Body.String(); body != "privacy" {
+		t.Fatalf("privacidade esperada, veio %q", body)
+	}
+	if body := get("agacha.app", "/").Body.String(); body != "tv" {
+		t.Fatalf("a página da TV deve continuar no agacha.app, veio %q", body)
+	}
+	if code := get("agacha.com.br", "/healthz").Code; code != http.StatusOK {
+		t.Fatalf("healthz deve responder em qualquer domínio, veio %d", code)
+	}
+	if rec := get("www.agacha.com.br", "/"); rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "https://agacha.com.br/" {
+		t.Fatalf("www deve redirecionar, veio %d %q", rec.Code, rec.Header().Get("Location"))
 	}
 }
