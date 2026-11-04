@@ -26,7 +26,12 @@ enum TVPage {
     .chip.out{opacity:.4}
     .dot{display:inline-block;width:3vh;height:3vh;border-radius:50%;margin-right:.8vw;vertical-align:middle}
     #status{position:absolute;right:2vw;top:2vh;font-size:2.6vh;opacity:.8}
-    #sound{position:absolute;left:0;right:0;bottom:0;padding:2vh;text-align:center;font-size:3.4vh;background:#FFC845;color:#1B1433;font-weight:700}
+    #sound{position:absolute;left:0;right:0;bottom:0;padding:2vh;text-align:center;font-size:3.4vh;background:#FFC845;color:#1B1433;font-weight:700;display:none}
+    #loading{position:absolute;left:0;top:0;right:0;bottom:0;background:#1B1433;display:-webkit-box;display:flex;-webkit-box-align:center;align-items:center;-webkit-box-pack:center;justify-content:center;-webkit-flex-direction:column;flex-direction:column;z-index:9}
+    #spin{width:14vh;height:14vh;border-radius:50%;border:2vh solid rgba(255,255,255,.18);border-top-color:#FFC845;box-sizing:border-box;-webkit-animation:spinA .9s linear infinite;animation:spinA .9s linear infinite}
+    #loadtxt{margin-top:4vh;font-size:4vh;font-weight:800}
+    @-webkit-keyframes spinA{from{-webkit-transform:rotate(0)}to{-webkit-transform:rotate(360deg)}}
+    @keyframes spinA{from{transform:rotate(0)}to{transform:rotate(360deg)}}
     /* ---- modo pontuação */
     #fx{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;display:none}
     #board{position:absolute;right:2vw;top:61vh;width:30vw;height:33vh;display:none}
@@ -69,6 +74,7 @@ enum TVPage {
     <div id="players"></div>
     <div id="status">Conectando…</div>
     <div id="sound">Aperte OK (ou qualquer tecla) no controle para ligar o som</div>
+    <div id="loading"><div id="spin"></div><div id="loadtxt">Carregando…</div></div>
     <script>
     var unlocked = false, ctx = null, buffers = {}, pending = {}, active = [], epoch = 0;
     var fallback = null, total = 0, loaded = 0;
@@ -843,10 +849,21 @@ enum TVPage {
       return ctx;
     }
     function soundStatus(){
-      if (!unlocked) return;
-      var box = el('sound');
-      box.style.display = (total && loaded < total) ? 'block' : 'none';
-      box.textContent = 'Carregando sons… ' + loaded + '/' + total;
+      if (total) { el('loadtxt').textContent = 'Carregando… ' + loaded + '/' + total; }
+      if (total && loaded >= total) { hideLoading(); }
+    }
+    var gotState = false, loadingGone = false, loadTimer = null;
+    function hideLoading(){
+      if (loadingGone || !gotState) return;
+      loadingGone = true; clearTimeout(loadTimer);
+      el('loading').style.display = 'none';
+    }
+    // Sem o aviso de OK quando o navegador já deixa tocar; só aparece se o som ficar bloqueado.
+    function checkSound(){
+      var c = ctx, ok = !c || c.state === 'running' || c.state === undefined;
+      unlocked = ok;
+      el('sound').style.display = (ok || !loadingGone) ? 'none' : 'block';
+      return ok;
     }
     function loadClip(name, done){
       if (buffers[name]) { if (done) done(buffers[name]); return; }
@@ -877,8 +894,8 @@ enum TVPage {
       pump(); soundStatus();
     }
     function playClip(name){
-      if (!unlocked) return;
       var mine = epoch;
+      if (ctx && ctx.state === 'suspended' && ctx.resume) { try { ctx.resume(); } catch (e) {} }
       if (!audioContext()) {
         if (!fallback) fallback = new Audio();
         fallback.src = '/audio/' + name + '.wav';
@@ -899,19 +916,28 @@ enum TVPage {
       active = [];
       if (fallback) { try { fallback.pause(); } catch (e) {} }
     }
+    var started = false;
+    function begin(){
+      if (started) return; started = true;
+      var c = audioContext();
+      if (!c) { unlocked = true; total = 0; return; }
+      try { if (c.resume) c.resume(); } catch (e) {}
+      var x = new XMLHttpRequest();
+      x.open('GET', '/clips');
+      x.onload = function(){ try { preload(JSON.parse(x.responseText)); } catch (e) { total = 0; } hideLoading(); };
+      x.onerror = function(){ hideLoading(); };
+      x.send();
+      checkSound();
+    }
     function unlock(){
-      if (unlocked) return;
-      unlocked = true;
       var c = audioContext();
       if (c) {
         try { if (c.resume) c.resume(); var silent = c.createBuffer(1, 1, 22050), s = c.createBufferSource();
               s.buffer = silent; s.connect(c.destination); if (s.start) { s.start(0); } } catch (e) {}
-        var x = new XMLHttpRequest();
-        x.open('GET', '/clips');
-        x.onload = function(){ try { preload(JSON.parse(x.responseText)); } catch (e) {} };
-        x.send();
       }
+      unlocked = true;
       el('sound').style.display = 'none';
+      begin();
     }
     document.addEventListener('keydown', unlock);
     document.addEventListener('click', unlock);
@@ -920,7 +946,7 @@ enum TVPage {
     // ---------- conexão
     function connect(){
       var es = new EventSource('/events');
-      es.addEventListener('state', function(e){ el('status').textContent = ''; render(JSON.parse(e.data)); });
+      es.addEventListener('state', function(e){ el('status').textContent = ''; render(JSON.parse(e.data)); if (!gotState) { gotState = true; if (!total || loaded >= total) { hideLoading(); } } });
       es.addEventListener('pose', function(e){ pose(JSON.parse(e.data)); });
       es.addEventListener('audio', function(e){ playClip(e.data); });
       es.addEventListener('stop', stopAll);
@@ -933,6 +959,11 @@ enum TVPage {
       setTimeout(function(){ blinking = false; drawStage(); }, 140);
     }, 3600);
     connect();
+    begin();
+    // Tenta de novo ligar o som e mostra o aviso só se o navegador continuar bloqueando.
+    setInterval(function(){ if (ctx && ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} } checkSound(); }, 1500);
+    // Nunca deixa a tela de carregamento presa.
+    loadTimer = setTimeout(function(){ gotState = true; hideLoading(); }, 15000);
     </script>
     </body>
     </html>
