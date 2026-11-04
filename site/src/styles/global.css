@@ -60,7 +60,7 @@ h1,h2,h3{font-family:var(--display);font-weight:800;line-height:1.05;letter-spac
 .proof b{color:var(--fg)}
 
 /* device demo */
-.demo{position:relative;display:flex;justify-content:center}
+.demo{position:relative;display:flex;flex-direction:column;align-items:center}
 .ipad{width:min(100%,520px);aspect-ratio:4/3;border-radius:34px;background:#0E0A1C;padding:16px;box-shadow:0 30px 60px rgba(0,0,0,.45),inset 0 0 0 2px #3A2F55;position:relative}
 .screen{position:absolute;inset:16px;border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#36C9A6,#1A9A7B 60%,#126B56);transition:background .35s;display:grid;grid-template-rows:auto 1fr auto}
 .screen.morto{background:linear-gradient(180deg,#FF8F6B,#E0523C 60%,#A63A2A)}

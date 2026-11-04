@@ -35,7 +35,7 @@ export function startHero() {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const state = KIDS.map(() => ({ c: 0, target: 0 }));
   let vivo = true, step = 0, visible = true, last = performance.now(), t0 = last;
-  let erred = false;
+  let erred = false, running = false;
 
   function size() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -73,11 +73,24 @@ export function startHero() {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     state.forEach((s) => { s.c += Math.sign(s.target - s.c) * Math.min(Math.abs(s.target - s.c), dt * 3.2); });
     draw(now);
-    if (visible && !document.hidden) requestAnimationFrame(frame);
+    if (running && visible && !document.hidden) requestAnimationFrame(frame);
   }
-  if (reduce) { draw(performance.now()); return; }
-  setInterval(() => { if (visible && !document.hidden) tick(); }, 1700);
-  new IntersectionObserver((e) => { visible = e[0].isIntersecting; if (visible) { last = performance.now(); requestAnimationFrame(frame); } }).observe(canvas);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && visible) { last = performance.now(); requestAnimationFrame(frame); } });
-  requestAnimationFrame(frame);
+  // Com "reduzir movimento" ligado a animação começa parada, mas o visitante pode ligá-la no botão.
+  const button = document.getElementById('heroToggle');
+  let timer = null; running = !reduce;
+  function sync() {
+    if (button) {
+      button.textContent = running ? '⏸ Pausar animação' : '▶ Ver animação';
+      button.setAttribute('aria-pressed', String(running));
+    }
+  }
+  function play() {
+    running = true; sync(); last = performance.now(); requestAnimationFrame(frame);
+    if (!timer) timer = setInterval(() => { if (running && visible && !document.hidden) tick(); }, 1700);
+  }
+  function pause() { running = false; sync(); }
+  button?.addEventListener('click', () => (running ? pause() : play()));
+  new IntersectionObserver((e) => { visible = e[0].isIntersecting; if (visible && running) { last = performance.now(); requestAnimationFrame(frame); } }).observe(canvas);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && visible && running) { last = performance.now(); requestAnimationFrame(frame); } });
+  if (running) play(); else { sync(); draw(performance.now()); }
 }
